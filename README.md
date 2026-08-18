@@ -4,9 +4,9 @@ Web application for sharing Docker images, developed as a project for the Softwa
 
 ## Team
 
-- [Anja Maksimović](https://github.com/Makiic) E2 77/2024
+- [Anja Maksimović](https://github.com/AnjaMaksimovic) E2 77/2024
 - [Biljana Mijić](https://github.com/biljanamijic26) E2 63/2024
-- [Marija Ilić](https://github.com/) E2 28/2024
+- [Marija Ilić](https://github.com/Makiic) E2 28/2024
 
 ## About
 
