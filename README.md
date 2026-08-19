@@ -80,7 +80,7 @@ Use lowercase letters and hyphens, no spaces.
 
 ## Local Setup
 
-> **Note:** This section reflects the current state of the project (initial setup only). It will be updated as more features are added — Docker setup, super admin command, etc.
+> **Note:** This section reflects the current state of the project. It will be updated as more features are added — Docker setup, etc.
 
 ### Prerequisites
 
@@ -118,6 +118,26 @@ By default, the project uses **SQLite** for local development (no extra setup ne
 ```bash
 export DATABASE_URL=postgres://postgres:postgres@localhost:5432/docker_registry
 ```
+
+### Super Admin Account
+
+On first run, create the super administrator account:
+
+```bash
+python manage.py setup_admin
+```
+
+This creates a user named `admin` with `role=SUPER_ADMIN` and `must_change_password=True`, and generates a random password. The password is **not** printed to the console — it's saved to a file, by default `admin_password.txt` inside `app/` (path is configurable via the `ADMIN_PASSWORD_FILE` environment variable, see `.env.example`).
+
+```bash
+cat admin_password.txt
+```
+
+Log in at `http://127.0.0.1:8000/admin/` with username `admin` and the password from that file.
+
+The command is safe to run more than once — if the `admin` user already exists, it does nothing and prints `Super admin 'admin' already exists, skipping.` instead of creating a duplicate or overwriting the password.
+
+`admin_password.txt` is git-ignored — never commit it.
 
 ### With Docker
 

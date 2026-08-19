@@ -98,6 +98,9 @@ LOGIN_URL = '/login/'
 LOGIN_REDIRECT_URL = '/'
 LOGOUT_REDIRECT_URL = '/'
 
+# Admin setup (setup_admin management command)
+ADMIN_PASSWORD_FILE = os.environ.get('ADMIN_PASSWORD_FILE', str(BASE_DIR / 'admin_password.txt'))
+
 # External services
 REDIS_URL = os.environ.get('REDIS_URL', 'redis://localhost:6379/0')
 ELASTICSEARCH_URL = os.environ.get('ELASTICSEARCH_URL', 'http://localhost:9200')
