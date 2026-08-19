@@ -162,3 +162,37 @@ class RegisterViewTest(TestCase):
 
         self.assertEqual(response.status_code, 302)
         self.assertEqual(response.url, "/")
+
+
+class LoginLogoutTest(TestCase):
+    """Test cases for login and logout."""
+
+    def setUp(self):
+        self.user = User.objects.create_user(username="loginuser", password="pass12345")
+
+    def test_valid_credentials_log_user_in(self):
+        """Logging in with correct credentials authenticates the user and redirects home."""
+        response = self.client.post("/login/", {"username": "loginuser", "password": "pass12345"})
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, "/")
+        self.assertIn("_auth_user_id", self.client.session)
+
+    def test_invalid_credentials_show_error(self):
+        """Logging in with wrong credentials re-renders the form with an error."""
+        response = self.client.post("/login/", {"username": "loginuser", "password": "wrongpass"})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.context["form"].errors)
+        self.assertNotIn("_auth_user_id", self.client.session)
+
+    def test_logout_clears_session(self):
+        """Logging out clears the session and redirects home."""
+        self.client.login(username="loginuser", password="pass12345")
+        self.assertIn("_auth_user_id", self.client.session)
+
+        response = self.client.post("/logout/")
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, "/")
+        self.assertNotIn("_auth_user_id", self.client.session)

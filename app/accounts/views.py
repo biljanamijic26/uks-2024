@@ -2,11 +2,24 @@
 Views for accounts app.
 """
 from django.contrib import messages
-from django.contrib.auth.mixins import UserPassesTestMixin
+from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
+from django.contrib.auth.views import LoginView, LogoutView
 from django.shortcuts import redirect
 from django.views.generic import CreateView
 
-from .forms import RegistrationForm
+from .forms import LoginForm, RegistrationForm
+
+
+class UserLoginView(LoginView):
+    """Login page, restricted to non-authenticated users."""
+
+    template_name = 'accounts/login.html'
+    authentication_form = LoginForm
+    redirect_authenticated_user = True
+
+
+class UserLogoutView(LoginRequiredMixin, LogoutView):
+    """Logs the user out; only authenticated users may log out."""
 
 
 class RegisterView(UserPassesTestMixin, CreateView):
