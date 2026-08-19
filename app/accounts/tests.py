@@ -110,3 +110,55 @@ class SetupAdminCommandTest(TestCase):
         self.assertTrue(admin.must_change_password)
         self.assertTrue(admin.is_superuser)
         self.assertTrue(admin.is_staff)
+
+
+class RegisterViewTest(TestCase):
+    """Test cases for the registration view."""
+
+    def _valid_data(self, **overrides):
+        data = {
+            "username": "newuser",
+            "email": "newuser@example.com",
+            "password1": "StrongPass123!",
+            "password2": "StrongPass123!",
+        }
+        data.update(overrides)
+        return data
+
+    def test_valid_registration_creates_user(self):
+        """A valid submission creates a user with role=USER and redirects to login."""
+        response = self.client.post("/register/", self._valid_data())
+
+        self.assertTrue(User.objects.filter(username="newuser").exists())
+        user = User.objects.get(username="newuser")
+        self.assertEqual(user.role, User.Role.USER)
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, "/login/")
+
+    def test_duplicate_username_shows_error(self):
+        """Registering with an existing username re-renders the form with an error."""
+        User.objects.create_user(username="existing", email="existing@example.com", password="pass12345")
+
+        response = self.client.post("/register/", self._valid_data(username="existing"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("username", response.context["form"].errors)
+        self.assertEqual(User.objects.filter(username="existing").count(), 1)
+
+    def test_password_mismatch_shows_error(self):
+        """Registering with mismatched passwords re-renders the form with an error."""
+        response = self.client.post("/register/", self._valid_data(password2="DifferentPass456!"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("password2", response.context["form"].errors)
+        self.assertFalse(User.objects.filter(username="newuser").exists())
+
+    def test_authenticated_user_redirected_away(self):
+        """Authenticated users are redirected away from the registration page."""
+        User.objects.create_user(username="loggedin", password="pass12345")
+        self.client.login(username="loggedin", password="pass12345")
+
+        response = self.client.get("/register/")
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, "/")
