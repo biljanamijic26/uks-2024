@@ -263,3 +263,67 @@ class ForcePasswordChangeMiddlewareTest(TestCase):
 
         home_response = self.client.get("/")
         self.assertEqual(home_response.status_code, 200)
+
+
+class ProfileTest(TestCase):
+    """Test cases for the profile view, edit view and password change view."""
+
+    def setUp(self):
+        self.user = User.objects.create_user(
+            username="profileuser",
+            email="profileuser@example.com",
+            password="OldPass123!",
+            role=User.Role.USER,
+            is_verified_publisher=True,
+        )
+
+    def test_profile_displays_correct_user_data(self):
+        """The profile page shows the logged-in user's own data."""
+        self.client.login(username="profileuser", password="OldPass123!")
+
+        response = self.client.get("/profile/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "profileuser")
+        self.assertContains(response, "profileuser@example.com")
+        self.assertContains(response, "Verified Publisher")
+
+    def test_email_update_works(self):
+        """Submitting the edit form updates the user's email and redirects to the profile page."""
+        self.client.login(username="profileuser", password="OldPass123!")
+
+        response = self.client.post("/profile/edit/", {"email": "newemail@example.com"})
+
+        self.assertRedirects(response, "/profile/")
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.email, "newemail@example.com")
+
+    def test_username_cannot_be_changed_via_edit_form(self):
+        """The edit form has no username field, so username stays the same regardless of input."""
+        self.client.login(username="profileuser", password="OldPass123!")
+
+        self.client.post("/profile/edit/", {"email": "newemail@example.com", "username": "hacked"})
+
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.username, "profileuser")
+
+    def test_password_change_works(self):
+        """Submitting the password change form updates the password and redirects to the profile page."""
+        self.client.login(username="profileuser", password="OldPass123!")
+
+        response = self.client.post("/profile/change-password/", {
+            "old_password": "OldPass123!",
+            "new_password1": "NewStrongPass456!",
+            "new_password2": "NewStrongPass456!",
+        })
+
+        self.assertRedirects(response, "/profile/")
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.check_password("NewStrongPass456!"))
+
+    def test_unauthenticated_users_are_redirected(self):
+        """Anonymous users are redirected to the login page for all profile URLs."""
+        for url in ("/profile/", "/profile/edit/", "/profile/change-password/"):
+            response = self.client.get(url)
+            self.assertEqual(response.status_code, 302)
+            self.assertTrue(response.url.startswith("/login/"))
