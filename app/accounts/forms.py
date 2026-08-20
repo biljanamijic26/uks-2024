@@ -16,8 +16,21 @@ class LoginForm(AuthenticationForm):
             field.widget.attrs.setdefault('class', 'form-control')
 
 
-class ForcedPasswordChangeForm(PasswordChangeForm):
+class StyledPasswordChangeForm(PasswordChangeForm):
     """Password change form with Bootstrap-styled widgets."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for field in self.fields.values():
+            field.widget.attrs.setdefault('class', 'form-control')
+
+
+class ProfileEditForm(forms.ModelForm):
+    """Allows a user to edit their own email address. Username is not editable here."""
+
+    class Meta:
+        model = User
+        fields = ('email',)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
