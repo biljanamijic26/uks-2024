@@ -95,7 +95,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # Authentication
 LOGIN_URL = '/login/'
 LOGIN_REDIRECT_URL = '/'
-LOGOUT_REDIRECT_URL = '/'
+LOGOUT_REDIRECT_URL = '/login/'
 
 # Admin setup (setup_admin management command)
 ADMIN_PASSWORD_FILE = os.environ.get('ADMIN_PASSWORD_FILE', str(BASE_DIR / 'admin_password.txt'))

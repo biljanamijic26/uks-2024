@@ -187,14 +187,14 @@ class LoginLogoutTest(TestCase):
         self.assertNotIn("_auth_user_id", self.client.session)
 
     def test_logout_clears_session(self):
-        """Logging out clears the session and redirects home."""
+        """Logging out clears the session and redirects to the login page."""
         self.client.login(username="loginuser", password="pass12345")
         self.assertIn("_auth_user_id", self.client.session)
 
         response = self.client.post("/logout/")
 
         self.assertEqual(response.status_code, 302)
-        self.assertEqual(response.url, "/")
+        self.assertEqual(response.url, "/login/")
         self.assertNotIn("_auth_user_id", self.client.session)
 
 
@@ -238,11 +238,11 @@ class ForcePasswordChangeMiddlewareTest(TestCase):
 
         self.assertNotEqual(login_response.url, "/password-change/")
         self.assertEqual(logout_response.status_code, 302)
-        self.assertEqual(logout_response.url, "/")
+        self.assertEqual(logout_response.url, "/login/")
 
     def test_anonymous_user_is_not_redirected(self):
         """Anonymous (unauthenticated) users are not redirected by the middleware."""
-        response = self.client.get("/")
+        response = self.client.get("/repositories/")
 
         self.assertEqual(response.status_code, 200)
 
