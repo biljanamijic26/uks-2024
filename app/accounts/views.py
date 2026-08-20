@@ -14,22 +14,27 @@ from .forms import LoginForm, ProfileEditForm, RegistrationForm, StyledPasswordC
 
 
 class UserLoginView(LoginView):
-    """Login page, restricted to non-authenticated users."""
+    """Login page, restricted to non-authenticated users. Shares the auth.html template
+    with RegisterView, rendering the login form in the active tab."""
 
-    template_name = 'accounts/login.html'
+    template_name = 'accounts/auth.html'
     authentication_form = LoginForm
     redirect_authenticated_user = True
 
-
-class UserLogoutView(LoginRequiredMixin, LogoutView):
-    """Logs the user out; only authenticated users may log out."""
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['login_form'] = context['form']
+        context['register_form'] = RegistrationForm()
+        context['active_tab'] = 'login'
+        return context
 
 
 class RegisterView(UserPassesTestMixin, CreateView):
-    """Allows a new, non-authenticated user to create an account."""
+    """Allows a new, non-authenticated user to create an account. Shares the auth.html
+    template with UserLoginView, rendering the registration form in the active tab."""
 
     form_class = RegistrationForm
-    template_name = 'accounts/register.html'
+    template_name = 'accounts/auth.html'
     success_url = '/login/'
 
     def test_func(self):
@@ -38,10 +43,21 @@ class RegisterView(UserPassesTestMixin, CreateView):
     def handle_no_permission(self):
         return redirect('home')
 
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['register_form'] = context['form']
+        context['login_form'] = LoginForm()
+        context['active_tab'] = 'register'
+        return context
+
     def form_valid(self, form):
         response = super().form_valid(form)
         messages.success(self.request, 'Registration successful. You can now log in.')
         return response
+
+
+class UserLogoutView(LoginRequiredMixin, LogoutView):
+    """Logs the user out; only authenticated users may log out."""
 
 
 class ForcedPasswordChangeView(LoginRequiredMixin, FormView):
@@ -94,7 +110,7 @@ class ProfilePasswordChangeView(LoginRequiredMixin, PasswordChangeView):
     form_class = StyledPasswordChangeForm
     template_name = 'accounts/password_change.html'
     success_url = reverse_lazy('profile')
-    extra_context = {'subtitle': 'Update your account password.'}
+    extra_context = {'subtitle': 'Update your account password.', 'back_url': reverse_lazy('profile')}
 
     def form_valid(self, form):
         response = super().form_valid(form)
