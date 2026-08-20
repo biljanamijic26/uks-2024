@@ -196,3 +196,70 @@ class LoginLogoutTest(TestCase):
         self.assertEqual(response.status_code, 302)
         self.assertEqual(response.url, "/")
         self.assertNotIn("_auth_user_id", self.client.session)
+
+
+class ForcePasswordChangeMiddlewareTest(TestCase):
+    """Test cases for ForcePasswordChangeMiddleware."""
+
+    def test_user_with_flag_is_redirected(self):
+        """A logged-in user with must_change_password=True is redirected to the change-password page."""
+        User.objects.create_user(username="flagged", password="pass12345", must_change_password=True)
+        self.client.login(username="flagged", password="pass12345")
+
+        response = self.client.get("/")
+
+        self.assertRedirects(response, "/password-change/")
+
+    def test_user_without_flag_is_not_redirected(self):
+        """A logged-in user with must_change_password=False is not redirected."""
+        User.objects.create_user(username="normal", password="pass12345", must_change_password=False)
+        self.client.login(username="normal", password="pass12345")
+
+        response = self.client.get("/")
+
+        self.assertEqual(response.status_code, 200)
+
+    def test_password_change_page_accessible_without_loop(self):
+        """The change-password page itself does not trigger a redirect loop."""
+        User.objects.create_user(username="flagged", password="pass12345", must_change_password=True)
+        self.client.login(username="flagged", password="pass12345")
+
+        response = self.client.get("/password-change/")
+
+        self.assertEqual(response.status_code, 200)
+
+    def test_login_and_logout_urls_excluded(self):
+        """Login and logout URLs are excluded from the forced redirect."""
+        User.objects.create_user(username="flagged", password="pass12345", must_change_password=True)
+        self.client.login(username="flagged", password="pass12345")
+
+        login_response = self.client.get("/login/")
+        logout_response = self.client.post("/logout/")
+
+        self.assertNotEqual(login_response.url, "/password-change/")
+        self.assertEqual(logout_response.status_code, 302)
+        self.assertEqual(logout_response.url, "/")
+
+    def test_anonymous_user_is_not_redirected(self):
+        """Anonymous (unauthenticated) users are not redirected by the middleware."""
+        response = self.client.get("/")
+
+        self.assertEqual(response.status_code, 200)
+
+    def test_password_change_clears_flag_and_logs_user_in(self):
+        """Successfully changing the password clears must_change_password and allows further access."""
+        user = User.objects.create_user(username="flagged", password="OldPass123!", must_change_password=True)
+        self.client.login(username="flagged", password="OldPass123!")
+
+        response = self.client.post("/password-change/", {
+            "old_password": "OldPass123!",
+            "new_password1": "NewStrongPass456!",
+            "new_password2": "NewStrongPass456!",
+        })
+
+        self.assertRedirects(response, "/")
+        user.refresh_from_db()
+        self.assertFalse(user.must_change_password)
+
+        home_response = self.client.get("/")
+        self.assertEqual(home_response.status_code, 200)
