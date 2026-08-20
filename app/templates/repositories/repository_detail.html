@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+
+{% block title %}{{ repository.full_name }} - Docker Registry Platform{% endblock %}
+
+{% block content %}
+<a href="{% url 'repository_list' %}" class="text-decoration-none d-inline-flex align-items-center mb-3">
+    <i class="bi bi-arrow-left me-1"></i>Back to repositories
+</a>
+
+<div class="row justify-content-center">
+    <div class="col-md-9 col-lg-7">
+        <div class="card border-0 shadow-sm rounded-4">
+            <div class="card-body p-4 p-md-5">
+                <div class="d-flex justify-content-between align-items-start mb-4">
+                    <h1 class="h3 mb-0">{{ repository.full_name }}</h1>
+                    {% if repository.visibility == "private" %}
+                    <span class="badge text-bg-secondary"><i class="bi bi-lock-fill"></i> Private</span>
+                    {% else %}
+                    <span class="badge text-bg-light"><i class="bi bi-globe"></i> Public</span>
+                    {% endif %}
+                </div>
+
+                <ul class="list-group list-group-flush mb-4">
+                    <li class="list-group-item d-flex justify-content-between align-items-center px-0">
+                        <span class="text-muted"><i class="bi bi-person me-2"></i>Owner</span>
+                        <span>{{ repository.owner.username }}</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center px-0">
+                        <span class="text-muted"><i class="bi bi-card-text me-2"></i>Description</span>
+                        <span>{{ repository.short_description|default:"—" }}</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center px-0">
+                        <span class="text-muted"><i class="bi bi-calendar3 me-2"></i>Created</span>
+                        <span>{{ repository.created_at|date:"F j, Y" }}</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center px-0">
+                        <span class="text-muted"><i class="bi bi-clock-history me-2"></i>Last updated</span>
+                        <span>{{ repository.updated_at|date:"F j, Y" }}</span>
+                    </li>
+                </ul>
+
+                {% if user == repository.owner %}
+                <div class="d-flex gap-2">
+                    <a href="{% url 'repository_edit' owner=repository.owner.username name=repository.name %}"
+                       class="btn btn-primary">
+                        <i class="bi bi-pencil-square me-1"></i>Edit
+                    </a>
+                    <a href="{% url 'repository_delete' owner=repository.owner.username name=repository.name %}"
+                       class="btn btn-outline-danger">
+                        <i class="bi bi-trash me-1"></i>Delete
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
