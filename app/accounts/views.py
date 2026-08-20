@@ -4,13 +4,13 @@ Views for accounts app.
 from django.contrib import messages
 from django.contrib.auth import update_session_auth_hash
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
-from django.contrib.auth.views import LoginView, LogoutView
+from django.contrib.auth.views import LoginView, LogoutView, PasswordChangeView
 from django.shortcuts import redirect
 from django.urls import reverse_lazy
-from django.views.generic import CreateView
+from django.views.generic import CreateView, TemplateView, UpdateView
 from django.views.generic.edit import FormView
 
-from .forms import ForcedPasswordChangeForm, LoginForm, RegistrationForm
+from .forms import LoginForm, ProfileEditForm, RegistrationForm, StyledPasswordChangeForm
 
 
 class UserLoginView(LoginView):
@@ -47,9 +47,10 @@ class RegisterView(UserPassesTestMixin, CreateView):
 class ForcedPasswordChangeView(LoginRequiredMixin, FormView):
     """Requires a logged-in user to set a new password before continuing."""
 
-    form_class = ForcedPasswordChangeForm
+    form_class = StyledPasswordChangeForm
     template_name = 'accounts/password_change.html'
     success_url = reverse_lazy('home')
+    extra_context = {'subtitle': 'You must set a new password before continuing.'}
 
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
@@ -63,3 +64,39 @@ class ForcedPasswordChangeView(LoginRequiredMixin, FormView):
         update_session_auth_hash(self.request, user)
         messages.success(self.request, 'Password changed successfully.')
         return super().form_valid(form)
+
+
+class ProfileView(LoginRequiredMixin, TemplateView):
+    """Displays the logged-in user's own profile information."""
+
+    template_name = 'accounts/profile.html'
+
+
+class ProfileEditView(LoginRequiredMixin, UpdateView):
+    """Allows the logged-in user to edit their own email address."""
+
+    form_class = ProfileEditForm
+    template_name = 'accounts/profile_edit.html'
+    success_url = reverse_lazy('profile')
+
+    def get_object(self, queryset=None):
+        return self.request.user
+
+    def form_valid(self, form):
+        response = super().form_valid(form)
+        messages.success(self.request, 'Profile updated successfully.')
+        return response
+
+
+class ProfilePasswordChangeView(LoginRequiredMixin, PasswordChangeView):
+    """Allows the logged-in user to change their own password from their profile."""
+
+    form_class = StyledPasswordChangeForm
+    template_name = 'accounts/password_change.html'
+    success_url = reverse_lazy('profile')
+    extra_context = {'subtitle': 'Update your account password.'}
+
+    def form_valid(self, form):
+        response = super().form_valid(form)
+        messages.success(self.request, 'Password changed successfully.')
+        return response
