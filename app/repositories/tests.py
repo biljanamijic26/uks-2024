@@ -66,6 +66,64 @@ class RepositoryModelTest(TestCase):
             repo.full_clean()
 
 
+class RepositoryListViewTest(TestCase):
+    """Test cases for the 'my repositories' list view."""
+
+    def setUp(self):
+        self.owner = User.objects.create_user(username='owner', password='pass12345')
+        self.other_user = User.objects.create_user(username='other', password='pass12345')
+
+    def test_lists_only_users_repositories(self):
+        """The list page shows only repositories owned by the logged-in user."""
+        Repository.objects.create(owner=self.owner, name='my-repo')
+        Repository.objects.create(owner=self.owner, name='another-repo')
+        self.client.login(username='owner', password='pass12345')
+
+        response = self.client.get('/repositories/')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.context['repositories']), 2)
+
+    def test_does_not_show_other_users_repositories(self):
+        """The list page does not include repositories owned by other users."""
+        Repository.objects.create(owner=self.other_user, name='not-mine')
+        self.client.login(username='owner', password='pass12345')
+
+        response = self.client.get('/repositories/')
+
+        self.assertEqual(len(response.context['repositories']), 0)
+        self.assertNotContains(response, 'not-mine')
+
+    def test_unauthenticated_user_redirected_to_login(self):
+        """An anonymous user is redirected to login when visiting the list page."""
+        response = self.client.get('/repositories/')
+
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(response.url.startswith('/login/'))
+
+    def test_sorted_by_most_recently_updated(self):
+        """Repositories are ordered by most recently updated first."""
+        older = Repository.objects.create(owner=self.owner, name='older-repo')
+        newer = Repository.objects.create(owner=self.owner, name='newer-repo')
+        older.short_description = 'touched'
+        older.save()
+        self.client.login(username='owner', password='pass12345')
+
+        response = self.client.get('/repositories/')
+
+        repositories = list(response.context['repositories'])
+        self.assertEqual(repositories[0], older)
+        self.assertEqual(repositories[1], newer)
+
+    def test_empty_state_when_no_repositories(self):
+        """An empty-state message is shown when the user has no repositories."""
+        self.client.login(username='owner', password='pass12345')
+
+        response = self.client.get('/repositories/')
+
+        self.assertContains(response, "don't have any repositories")
+
+
 class RepositoryViewsTest(TestCase):
     """Test cases for repository CRUD views."""
 
