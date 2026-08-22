@@ -80,12 +80,11 @@ Use lowercase letters and hyphens, no spaces.
 
 ## Local Setup
 
-> **Note:** This section reflects the current state of the project. It will be updated as more features are added — Docker setup, etc.
-
 ### Prerequisites
 
 - Python 3.12+
 - Git
+- Docker and Docker Compose (only needed for the "With Docker" setup below)
 
 ### Getting Started (without Docker)
 
@@ -141,7 +140,27 @@ The command is safe to run more than once — if the `admin` user already exists
 
 ### With Docker
 
-*Coming soon — Docker Compose setup is planned for an upcoming issue.*
+```bash
+git clone <repo-url>
+cd docker-registry-platform
+
+# Copy the example environment file and adjust as needed
+cp .env.example .env
+
+# Build and start all services (web, db, redis, nginx, elasticsearch)
+docker compose up --build
+```
+
+The app will be available at `http://localhost/`, and Elasticsearch at `http://localhost:9200/`.
+
+On first run, create the super admin account inside the `web` container:
+
+```bash
+docker compose exec web python manage.py setup_admin
+docker compose exec web cat admin_password.txt
+```
+
+The `web` container runs migrations automatically on startup and waits for the `db` service to report healthy before starting.
 
 ## Project Structure
 
@@ -153,10 +172,15 @@ docker-registry-platform/
 │   ├── repositories/       # Repository and tag management
 │   ├── explore/            # Public search and discovery
 │   ├── analytics/          # Log collection and Elasticsearch
-│   ├── core/                # Shared utilities
+│   ├── core/               # Shared utilities
 │   ├── templates/          # HTML templates
+│   ├── Dockerfile
+│   ├── entrypoint.sh
 │   ├── requirements.txt
 │   └── manage.py
+├── nginx/
+│   └── nginx.conf          # Reverse proxy config
+├── docker-compose.yml
 ├── .env.example
 ├── .gitignore
 └── README.md
