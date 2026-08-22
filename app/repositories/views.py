@@ -3,7 +3,6 @@ Views for repositories app.
 """
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
-from django.db.models import Q
 from django.http import Http404
 from django.shortcuts import get_object_or_404
 from django.urls import reverse_lazy
@@ -30,19 +29,15 @@ class RepositoryOwnerRequiredMixin(LoginRequiredMixin, UserPassesTestMixin):
         return self.get_object().owner == self.request.user
 
 
-class RepositoryListView(ListView):
-    """Lists public repositories, plus the logged-in user's own private ones."""
+class RepositoryListView(LoginRequiredMixin, ListView):
+    """Lists the logged-in user's own repositories, most recently updated first."""
 
     model = Repository
     template_name = 'repositories/repository_list.html'
     context_object_name = 'repositories'
 
     def get_queryset(self):
-        user = self.request.user
-        queryset = Repository.objects.select_related('owner')
-        if user.is_authenticated:
-            return queryset.filter(Q(visibility=Repository.Visibility.PUBLIC) | Q(owner=user))
-        return queryset.filter(visibility=Repository.Visibility.PUBLIC)
+        return Repository.objects.filter(owner=self.request.user).order_by('-updated_at')
 
 
 class RepositoryDetailView(DetailView):
