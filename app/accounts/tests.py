@@ -242,7 +242,7 @@ class ForcePasswordChangeMiddlewareTest(TestCase):
 
     def test_anonymous_user_is_not_redirected(self):
         """Anonymous (unauthenticated) users are not redirected by the middleware."""
-        response = self.client.get("/repositories/")
+        response = self.client.get("/login/")
 
         self.assertEqual(response.status_code, 200)
 
