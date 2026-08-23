@@ -45,6 +45,12 @@ class TagCreateForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         _style_fields(self)
 
+    def clean_name(self):
+        name = self.cleaned_data['name']
+        if Tag.objects.filter(repository=self.instance.repository, name=name).exists():
+            raise forms.ValidationError('A tag with this name already exists in this repository.')
+        return name
+
 
 class TagEditForm(forms.ModelForm):
     """Form for editing an existing tag. Name is not editable."""

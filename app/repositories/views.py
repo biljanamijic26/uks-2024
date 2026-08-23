@@ -150,8 +150,12 @@ class TagCreateView(TagOwnerRequiredMixin, CreateView):
         context['repository'] = self.get_repository()
         return context
 
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs['instance'] = Tag(repository=self.get_repository())
+        return kwargs
+
     def form_valid(self, form):
-        form.instance.repository = self.get_repository()
         response = super().form_valid(form)
         messages.success(self.request, 'Tag created successfully.')
         return response
