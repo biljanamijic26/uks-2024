@@ -121,6 +121,109 @@ class TagModelTest(TestCase):
             Tag.objects.create(repository=self.repo, name='latest', digest='sha256:' + 'b' * 64, size=2048)
 
 
+class TagViewsTest(TestCase):
+    """Test cases for tag CRUD views."""
+
+    def setUp(self):
+        self.owner = User.objects.create_user(username='owner', password='pass12345')
+        self.other_user = User.objects.create_user(username='other', password='pass12345')
+        self.repo = Repository.objects.create(owner=self.owner, name='my-repo')
+
+    def test_create_tag(self):
+        """The repository owner can create a tag."""
+        self.client.login(username='owner', password='pass12345')
+
+        response = self.client.post('/repositories/owner/my-repo/tags/new/', {
+            'name': 'latest',
+            'digest': 'sha256:' + 'a' * 64,
+            'size': 1024,
+        })
+
+        self.assertRedirects(response, '/repositories/owner/my-repo/')
+        tag = Tag.objects.get(repository=self.repo, name='latest')
+        self.assertEqual(tag.size, 1024)
+
+    def test_non_owner_cannot_create_tag(self):
+        """A non-owner cannot create a tag for someone else's repository."""
+        self.client.login(username='other', password='pass12345')
+
+        response = self.client.post('/repositories/owner/my-repo/tags/new/', {
+            'name': 'latest',
+            'digest': 'sha256:' + 'a' * 64,
+            'size': 1024,
+        })
+
+        self.assertEqual(response.status_code, 403)
+        self.assertFalse(Tag.objects.filter(repository=self.repo, name='latest').exists())
+
+    def test_list_tags_for_repository(self):
+        """Tags are listed on the repository detail page, newest first."""
+        older = Tag.objects.create(repository=self.repo, name='v1.0.0', digest='sha256:' + 'a' * 64, size=1024)
+        newer = Tag.objects.create(repository=self.repo, name='latest', digest='sha256:' + 'b' * 64, size=2048)
+
+        response = self.client.get('/repositories/owner/my-repo/')
+
+        tags = list(response.context['tags'])
+        self.assertEqual(tags[0], newer)
+        self.assertEqual(tags[1], older)
+
+    def test_update_tag(self):
+        """The repository owner can update a tag's digest and size."""
+        Tag.objects.create(repository=self.repo, name='latest', digest='sha256:' + 'a' * 64, size=1024)
+        self.client.login(username='owner', password='pass12345')
+
+        response = self.client.post('/repositories/owner/my-repo/tags/latest/edit/', {
+            'digest': 'sha256:' + 'b' * 64,
+            'size': 2048,
+        })
+
+        self.assertRedirects(response, '/repositories/owner/my-repo/')
+        tag = Tag.objects.get(repository=self.repo, name='latest')
+        self.assertEqual(tag.digest, 'sha256:' + 'b' * 64)
+        self.assertEqual(tag.size, 2048)
+
+    def test_non_owner_cannot_update_tag(self):
+        """A non-owner cannot update a tag on someone else's repository."""
+        Tag.objects.create(repository=self.repo, name='latest', digest='sha256:' + 'a' * 64, size=1024)
+        self.client.login(username='other', password='pass12345')
+
+        response = self.client.post('/repositories/owner/my-repo/tags/latest/edit/', {
+            'digest': 'sha256:' + 'b' * 64,
+            'size': 2048,
+        })
+
+        self.assertEqual(response.status_code, 403)
+        tag = Tag.objects.get(repository=self.repo, name='latest')
+        self.assertEqual(tag.digest, 'sha256:' + 'a' * 64)
+
+    def test_delete_tag(self):
+        """The repository owner can delete a tag via the confirmation page."""
+        Tag.objects.create(repository=self.repo, name='latest', digest='sha256:' + 'a' * 64, size=1024)
+        self.client.login(username='owner', password='pass12345')
+
+        response = self.client.post('/repositories/owner/my-repo/tags/latest/delete/')
+
+        self.assertRedirects(response, '/repositories/owner/my-repo/')
+        self.assertFalse(Tag.objects.filter(repository=self.repo, name='latest').exists())
+
+    def test_non_owner_cannot_delete_tag(self):
+        """A non-owner cannot delete a tag on someone else's repository."""
+        Tag.objects.create(repository=self.repo, name='latest', digest='sha256:' + 'a' * 64, size=1024)
+        self.client.login(username='other', password='pass12345')
+
+        response = self.client.post('/repositories/owner/my-repo/tags/latest/delete/')
+
+        self.assertEqual(response.status_code, 403)
+        self.assertTrue(Tag.objects.filter(repository=self.repo, name='latest').exists())
+
+    def test_anonymous_user_cannot_create_tag(self):
+        """An anonymous user is redirected to login when trying to create a tag."""
+        response = self.client.get('/repositories/owner/my-repo/tags/new/')
+
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(response.url.startswith('/login/'))
+
+
 class RepositoryListViewTest(TestCase):
     """Test cases for the 'my repositories' list view."""
 
