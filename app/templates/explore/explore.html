@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+
+{% block title %}Explore - Docker Registry Platform{% endblock %}
+
+{% block extra_css %}
+<style>
+    .repo-card {
+        transition: transform .15s ease, border-color .15s ease;
+    }
+    .repo-card:hover {
+        transform: translateY(-3px);
+        border-color: var(--bs-primary) !important;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<h1 class="h3 mb-4">Explore</h1>
+
+<form method="get" id="explore-search-form" class="mb-4">
+    <div class="input-group">
+        <span class="input-group-text"><i class="bi bi-search"></i></span>
+        <input type="text" name="q" value="{{ query }}" class="form-control" id="explore-search-input"
+               placeholder="Search public repositories by name or description">
+        <button type="submit" class="btn btn-primary">Search</button>
+    </div>
+</form>
+
+{% if repositories %}
+<div class="row row-cols-1 row-cols-md-2 row-cols-xl-3 g-3">
+    {% for repository in repositories %}
+    <div class="col">
+        <a href="{% url 'repository_detail' owner=repository.owner.username name=repository.name %}"
+           class="text-decoration-none">
+            <div class="card repo-card h-100 shadow-sm border">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <h5 class="card-title mb-0 text-body">
+                            <i class="bi bi-box-seam me-2 text-primary"></i>{{ repository.full_name }}
+                        </h5>
+                        <div class="d-flex flex-column gap-1 align-items-end">
+                            {% if repository.is_official %}
+                            <span class="badge text-bg-primary"><i class="bi bi-patch-check-fill"></i> Official</span>
+                            {% endif %}
+                            {% if repository.owner.is_verified_publisher %}
+                            <span class="badge text-bg-info"><i class="bi bi-shield-check"></i> Verified Publisher</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <p class="card-text text-muted mb-2">
+                        {{ repository.short_description|default:"No description provided."|truncatechars:80 }}
+                    </p>
+                    <p class="card-text text-muted small mb-0">
+                        <i class="bi bi-person me-1"></i>{{ repository.owner.username }}
+                    </p>
+                </div>
+            </div>
+        </a>
+    </div>
+    {% endfor %}
+</div>
+
+{% if is_paginated %}
+<nav class="mt-4" aria-label="Search results pages">
+    <ul class="pagination justify-content-center">
+        {% if page_obj.has_previous %}
+        <li class="page-item">
+            <a class="page-link" href="?q={{ query }}&page={{ page_obj.previous_page_number }}">Previous</a>
+        </li>
+        {% endif %}
+        <li class="page-item disabled">
+            <span class="page-link">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+        </li>
+        {% if page_obj.has_next %}
+        <li class="page-item">
+            <a class="page-link" href="?q={{ query }}&page={{ page_obj.next_page_number }}">Next</a>
+        </li>
+        {% endif %}
+    </ul>
+</nav>
+{% endif %}
+
+{% else %}
+<div class="text-center py-5">
+    <i class="bi bi-compass display-4 text-muted"></i>
+    {% if query %}
+    <p class="text-muted mt-3 mb-0">No public repositories match "{{ query }}".</p>
+    {% else %}
+    <p class="text-muted mt-3 mb-0">No public repositories available yet.</p>
+    {% endif %}
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    (function () {
+        const input = document.getElementById('explore-search-input');
+        const form = document.getElementById('explore-search-form');
+        let debounceTimer;
+
+        input.addEventListener('input', function () {
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(function () {
+                form.requestSubmit();
+            }, 400);
+        });
+
+        if (input.value) {
+            input.focus();
+            input.setSelectionRange(input.value.length, input.value.length);
+        }
+    })();
+</script>
+{% endblock %}
