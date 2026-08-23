@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+
+{% block title %}Create Admin - Docker Registry Platform{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-7 col-lg-6">
+        <div class="card border-0 shadow-sm rounded-4">
+            <div class="card-body p-4 p-md-5">
+                <div class="text-center mb-4">
+                    <i class="bi bi-person-plus-fill display-6 text-primary"></i>
+                    <h1 class="h3 mt-2 mb-1">Create Admin</h1>
+                    <p class="text-muted mb-0">Grant a user admin access to the platform.</p>
+                </div>
+
+                {% if form.non_field_errors %}
+                <div class="alert alert-danger">
+                    {% for error in form.non_field_errors %}
+                    <p class="mb-0">{{ error }}</p>
+                    {% endfor %}
+                </div>
+                {% endif %}
+
+                <form method="post" novalidate>
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label for="{{ form.username.id_for_label }}" class="form-label">Username</label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="bi bi-person"></i></span>
+                            {{ form.username }}
+                        </div>
+                        {% for error in form.username.errors %}
+                        <div class="text-danger small mt-1">{{ error }}</div>
+                        {% endfor %}
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="{{ form.email.id_for_label }}" class="form-label">Email</label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="bi bi-envelope"></i></span>
+                            {{ form.email }}
+                        </div>
+                        {% for error in form.email.errors %}
+                        <div class="text-danger small mt-1">{{ error }}</div>
+                        {% endfor %}
+                    </div>
+
+                    <div class="mb-2">
+                        <label for="{{ form.password.id_for_label }}" class="form-label">Password</label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="bi bi-key"></i></span>
+                            {{ form.password }}
+                            <button type="button" id="toggle-password" class="btn btn-outline-secondary" tabindex="-1">
+                                <i class="bi bi-eye"></i>
+                            </button>
+                        </div>
+                        {% for error in form.password.errors %}
+                        <div class="text-danger small mt-1">{{ error }}</div>
+                        {% endfor %}
+                    </div>
+
+                    <div class="form-check mb-4">
+                        <input class="form-check-input" type="checkbox" id="generate-password-check" checked>
+                        <label class="form-check-label text-muted small" for="generate-password-check">
+                            Generate a random password automatically
+                        </label>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary w-100 py-2">
+                        <i class="bi bi-check-lg me-1"></i>Create Admin
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    (function () {
+        const passwordInput = document.getElementById('{{ form.password.id_for_label }}');
+        const generateCheck = document.getElementById('generate-password-check');
+        const toggleBtn = document.getElementById('toggle-password');
+
+        function syncPasswordField() {
+            if (generateCheck.checked) {
+                passwordInput.value = '';
+                passwordInput.disabled = true;
+                passwordInput.placeholder = 'Will be generated automatically';
+            } else {
+                passwordInput.disabled = false;
+                passwordInput.placeholder = '';
+            }
+        }
+
+        generateCheck.addEventListener('change', syncPasswordField);
+        syncPasswordField();
+
+        toggleBtn.addEventListener('click', function () {
+            const isPassword = passwordInput.type === 'password';
+            passwordInput.type = isPassword ? 'text' : 'password';
+            toggleBtn.querySelector('i').className = isPassword ? 'bi bi-eye-slash' : 'bi bi-eye';
+        });
+    })();
+</script>
+{% endblock %}
