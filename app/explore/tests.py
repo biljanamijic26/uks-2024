@@ -89,3 +89,21 @@ class ExploreListViewTest(TestCase):
         response = self.client.get('/explore/')
 
         self.assertContains(response, 'No public repositories available yet.')
+
+    def test_verified_publisher_badge_shown_for_verified_owner(self):
+        """The Verified Publisher badge is shown when the repository's owner is verified."""
+        self.owner.is_verified_publisher = True
+        self.owner.save()
+        Repository.objects.create(owner=self.owner, name='my-repo')
+
+        response = self.client.get('/explore/')
+
+        self.assertContains(response, 'Verified Publisher')
+
+    def test_verified_publisher_badge_hidden_for_unverified_owner(self):
+        """The Verified Publisher badge is not shown when the repository's owner isn't verified."""
+        Repository.objects.create(owner=self.owner, name='my-repo')
+
+        response = self.client.get('/explore/')
+
+        self.assertNotContains(response, 'Verified Publisher')
