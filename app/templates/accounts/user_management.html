@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+
+{% block title %}User Management - Docker Registry Platform{% endblock %}
+
+{% block content %}
+<h1 class="h3 mb-4">User Management</h1>
+
+<form method="get" id="user-search-form" class="mb-4">
+    <div class="input-group">
+        <span class="input-group-text"><i class="bi bi-search"></i></span>
+        <input type="text" name="q" value="{{ query }}" class="form-control" id="user-search-input"
+               placeholder="Search users by username or email">
+        <button type="submit" class="btn btn-primary">Search</button>
+    </div>
+</form>
+
+{% if users %}
+<div class="table-responsive">
+    <table class="table align-middle">
+        <thead>
+            <tr>
+                <th>Username</th>
+                <th>Email</th>
+                <th>Role</th>
+                <th>Badges</th>
+                <th class="text-end">Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for target_user in users %}
+            <tr>
+                <td>{{ target_user.username }}</td>
+                <td>{{ target_user.email }}</td>
+                <td>{{ target_user.get_role_display }}</td>
+                <td>
+                    {% if target_user.is_verified_publisher %}
+                    <span class="badge text-bg-primary"><i class="bi bi-patch-check-fill"></i> Verified Publisher</span>
+                    {% endif %}
+                    {% if target_user.is_sponsored_oss %}
+                    <span class="badge text-bg-success"><i class="bi bi-heart-fill"></i> Sponsored OSS</span>
+                    {% endif %}
+                    {% if not target_user.is_verified_publisher and not target_user.is_sponsored_oss %}
+                    <span class="text-muted fst-italic">None</span>
+                    {% endif %}
+                </td>
+                <td class="text-end">
+                    <form method="post" action="{% url 'toggle_user_badge' username=target_user.username %}"
+                          class="d-inline">
+                        {% csrf_token %}
+                        <input type="hidden" name="badge" value="is_verified_publisher">
+                        <input type="hidden" name="q" value="{{ query }}">
+                        <button type="submit" class="btn btn-sm btn-outline-primary">
+                            {% if target_user.is_verified_publisher %}Remove{% else %}Grant{% endif %} Verified Publisher
+                        </button>
+                    </form>
+                    <form method="post" action="{% url 'toggle_user_badge' username=target_user.username %}"
+                          class="d-inline">
+                        {% csrf_token %}
+                        <input type="hidden" name="badge" value="is_sponsored_oss">
+                        <input type="hidden" name="q" value="{{ query }}">
+                        <button type="submit" class="btn btn-sm btn-outline-success">
+                            {% if target_user.is_sponsored_oss %}Remove{% else %}Grant{% endif %} Sponsored OSS
+                        </button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+{% if is_paginated %}
+<nav class="mt-4" aria-label="User search results pages">
+    <ul class="pagination justify-content-center">
+        {% if page_obj.has_previous %}
+        <li class="page-item">
+            <a class="page-link" href="?q={{ query }}&page={{ page_obj.previous_page_number }}">Previous</a>
+        </li>
+        {% endif %}
+        <li class="page-item disabled">
+            <span class="page-link">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+        </li>
+        {% if page_obj.has_next %}
+        <li class="page-item">
+            <a class="page-link" href="?q={{ query }}&page={{ page_obj.next_page_number }}">Next</a>
+        </li>
+        {% endif %}
+    </ul>
+</nav>
+{% endif %}
+
+{% else %}
+<div class="text-center py-5">
+    <i class="bi bi-people display-4 text-muted"></i>
+    {% if query %}
+    <p class="text-muted mt-3 mb-0">No users match "{{ query }}".</p>
+    {% else %}
+    <p class="text-muted mt-3 mb-0">No users found.</p>
+    {% endif %}
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    (function () {
+        const input = document.getElementById('user-search-input');
+        const form = document.getElementById('user-search-form');
+        let debounceTimer;
+
+        input.addEventListener('input', function () {
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(function () {
+                form.requestSubmit();
+            }, 400);
+        });
+
+        if (input.value) {
+            input.focus();
+            input.setSelectionRange(input.value.length, input.value.length);
+        }
+    })();
+</script>
+{% endblock %}
