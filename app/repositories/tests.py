@@ -5,7 +5,7 @@ from django.contrib.auth import get_user_model
 from django.db import IntegrityError
 from django.test import TestCase
 
-from .models import Repository
+from .models import Repository, Tag
 
 User = get_user_model()
 
@@ -64,6 +64,61 @@ class RepositoryModelTest(TestCase):
         repo = Repository(owner=self.owner, name='my repo')
         with self.assertRaises(Exception):
             repo.full_clean()
+
+
+class TagModelTest(TestCase):
+    """Test cases for Tag model."""
+
+    def setUp(self):
+        self.owner = User.objects.create_user(username='owner', password='pass12345')
+        self.repo = Repository.objects.create(owner=self.owner, name='my-repo')
+
+    def test_create_tag_with_valid_data(self):
+        """A tag can be created with valid data."""
+        tag = Tag.objects.create(
+            repository=self.repo,
+            name='latest',
+            digest='sha256:' + 'a' * 64,
+            size=1024,
+        )
+        self.assertEqual(tag.name, 'latest')
+        self.assertEqual(tag.repository, self.repo)
+        self.assertEqual(tag.size, 1024)
+
+    def test_full_name_returns_correct_format(self):
+        """full_name returns 'repository_full_name:tag_name'."""
+        tag = Tag.objects.create(
+            repository=self.repo,
+            name='v1.0.0',
+            digest='sha256:' + 'a' * 64,
+            size=1024,
+        )
+        self.assertEqual(tag.full_name, 'owner/my-repo:v1.0.0')
+
+    def test_short_digest_truncates_correctly(self):
+        """short_digest returns the first 12 characters of the hash part."""
+        digest = 'sha256:' + 'abcdef1234567890' * 4
+        tag = Tag.objects.create(repository=self.repo, name='latest', digest=digest, size=1024)
+        self.assertEqual(tag.short_digest, 'abcdef123456')
+
+    def test_size_display_returns_human_readable_format(self):
+        """size_display converts bytes into a human-readable string."""
+        cases = [
+            (512, '512 B'),
+            (2048, '2.0 KB'),
+            (5 * 1024 * 1024, '5.0 MB'),
+            (int(1.2 * 1024 * 1024 * 1024), '1.2 GB'),
+        ]
+        for size, expected in cases:
+            tag = Tag(repository=self.repo, name='latest', digest='sha256:' + 'a' * 64, size=size)
+            self.assertEqual(tag.size_display, expected)
+
+    def test_uniqueness_constraint_prevents_duplicate_tag_names(self):
+        """The same repository cannot have two tags with the same name."""
+        Tag.objects.create(repository=self.repo, name='latest', digest='sha256:' + 'a' * 64, size=1024)
+
+        with self.assertRaises(IntegrityError):
+            Tag.objects.create(repository=self.repo, name='latest', digest='sha256:' + 'b' * 64, size=2048)
 
 
 class RepositoryListViewTest(TestCase):
