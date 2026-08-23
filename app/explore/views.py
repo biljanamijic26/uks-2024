@@ -28,9 +28,9 @@ class ExploreListView(ListView):
                     default=1,
                     output_field=IntegerField(),
                 ),
-            ).order_by('relevance', '-updated_at')
+            ).order_by('-is_official', 'relevance', '-updated_at')
         else:
-            queryset = queryset.order_by('-updated_at')
+            queryset = queryset.order_by('-is_official', '-updated_at')
 
         return queryset
 

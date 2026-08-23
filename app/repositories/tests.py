@@ -401,3 +401,62 @@ class RepositoryViewsTest(TestCase):
 
         self.assertEqual(response.status_code, 403)
         self.assertTrue(Repository.objects.filter(owner=self.owner, name='my-repo').exists())
+
+
+class OfficialRepositoryCreateViewTest(TestCase):
+    """Test cases for the admin-only official repository creation view."""
+
+    def setUp(self):
+        self.admin = User.objects.create_user(username='siteadmin', password='pass12345', role=User.Role.ADMIN)
+        self.regular_user = User.objects.create_user(username='regular', password='pass12345')
+
+    def test_admin_can_create_official_repository(self):
+        """An admin can create a repository with is_official=True."""
+        self.client.login(username='siteadmin', password='pass12345')
+
+        response = self.client.post('/repositories/official/new/', {
+            'name': 'nginx',
+            'short_description': 'Official build of nginx.',
+            'visibility': Repository.Visibility.PUBLIC,
+        })
+
+        self.assertRedirects(response, '/repositories/siteadmin/nginx/')
+        repo = Repository.objects.get(name='nginx')
+        self.assertTrue(repo.is_official)
+        self.assertEqual(repo.full_name, 'nginx')
+
+    def test_regular_user_cannot_create_official_repository(self):
+        """A non-admin is denied access to the official repository creation page."""
+        self.client.login(username='regular', password='pass12345')
+
+        response = self.client.post('/repositories/official/new/', {
+            'name': 'nginx',
+            'short_description': 'Should not be created.',
+            'visibility': Repository.Visibility.PUBLIC,
+        })
+
+        self.assertEqual(response.status_code, 403)
+        self.assertFalse(Repository.objects.filter(name='nginx').exists())
+
+    def test_anonymous_user_cannot_create_official_repository(self):
+        """An anonymous user is redirected to login."""
+        response = self.client.get('/repositories/official/new/')
+
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(response.url.startswith('/login/'))
+
+    def test_official_badge_displays_on_detail_page(self):
+        """The 'Docker Official Image' badge renders on an official repository's detail page."""
+        Repository.objects.create(owner=self.admin, name='nginx', is_official=True)
+
+        response = self.client.get('/repositories/siteadmin/nginx/')
+
+        self.assertContains(response, 'Docker Official Image')
+
+    def test_official_badge_does_not_display_for_regular_repository(self):
+        """The badge does not render for a non-official repository."""
+        Repository.objects.create(owner=self.regular_user, name='my-repo')
+
+        response = self.client.get('/repositories/regular/my-repo/')
+
+        self.assertNotContains(response, 'Docker Official Image')
