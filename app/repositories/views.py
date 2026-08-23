@@ -8,8 +8,8 @@ from django.shortcuts import get_object_or_404
 from django.urls import reverse_lazy
 from django.views.generic import CreateView, DeleteView, DetailView, ListView, UpdateView
 
-from .forms import RepositoryCreateForm, RepositoryEditForm
-from .models import Repository
+from .forms import RepositoryCreateForm, RepositoryEditForm, TagCreateForm, TagEditForm
+from .models import Repository, Tag
 
 
 class RepositoryOwnerRequiredMixin(LoginRequiredMixin, UserPassesTestMixin):
@@ -27,6 +27,30 @@ class RepositoryOwnerRequiredMixin(LoginRequiredMixin, UserPassesTestMixin):
 
     def test_func(self):
         return self.get_object().owner == self.request.user
+
+
+class TagOwnerRequiredMixin(LoginRequiredMixin, UserPassesTestMixin):
+    """Restricts access to the parent repository's owner. Looks the repository up by
+    owner username and name from the URL, matching the /repositories/<owner>/<name>/tags/... scheme."""
+
+    def get_repository(self):
+        if not hasattr(self, '_repository'):
+            self._repository = get_object_or_404(
+                Repository,
+                owner__username=self.kwargs['owner'],
+                name=self.kwargs['name'],
+            )
+        return self._repository
+
+    def test_func(self):
+        return self.get_repository().owner == self.request.user
+
+    def get_success_url(self):
+        repository = self.get_repository()
+        return reverse_lazy(
+            'repository_detail',
+            kwargs={'owner': repository.owner.username, 'name': repository.name},
+        )
 
 
 class RepositoryListView(LoginRequiredMixin, ListView):
@@ -56,6 +80,11 @@ class RepositoryDetailView(DetailView):
         if repository.visibility == Repository.Visibility.PRIVATE and repository.owner != self.request.user:
             raise Http404
         return repository
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['tags'] = self.object.tags.order_by('-created_at', '-id')
+        return context
 
 
 class RepositoryCreateView(LoginRequiredMixin, CreateView):
@@ -106,4 +135,62 @@ class RepositoryDeleteView(RepositoryOwnerRequiredMixin, DeleteView):
 
     def form_valid(self, form):
         messages.success(self.request, 'Repository deleted successfully.')
+        return super().form_valid(form)
+
+
+class TagCreateView(TagOwnerRequiredMixin, CreateView):
+    """Allows the repository owner to create a new tag."""
+
+    model = Tag
+    form_class = TagCreateForm
+    template_name = 'repositories/tag_form.html'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['repository'] = self.get_repository()
+        return context
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs['instance'] = Tag(repository=self.get_repository())
+        return kwargs
+
+    def form_valid(self, form):
+        response = super().form_valid(form)
+        messages.success(self.request, 'Tag created successfully.')
+        return response
+
+
+class TagUpdateView(TagOwnerRequiredMixin, UpdateView):
+    """Allows the repository owner to edit a tag's digest and size."""
+
+    model = Tag
+    form_class = TagEditForm
+    template_name = 'repositories/tag_form.html'
+
+    def get_object(self, queryset=None):
+        return get_object_or_404(Tag, repository=self.get_repository(), name=self.kwargs['tag_name'])
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['repository'] = self.get_repository()
+        return context
+
+    def form_valid(self, form):
+        response = super().form_valid(form)
+        messages.success(self.request, 'Tag updated successfully.')
+        return response
+
+
+class TagDeleteView(TagOwnerRequiredMixin, DeleteView):
+    """Allows the repository owner to delete a tag, after a confirmation page."""
+
+    model = Tag
+    template_name = 'repositories/tag_confirm_delete.html'
+
+    def get_object(self, queryset=None):
+        return get_object_or_404(Tag, repository=self.get_repository(), name=self.kwargs['tag_name'])
+
+    def form_valid(self, form):
+        messages.success(self.request, 'Tag deleted successfully.')
         return super().form_valid(form)
