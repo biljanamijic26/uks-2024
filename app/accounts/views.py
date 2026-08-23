@@ -10,7 +10,7 @@ from django.urls import reverse_lazy
 from django.views.generic import CreateView, TemplateView, UpdateView
 from django.views.generic.edit import FormView
 
-from .forms import LoginForm, ProfileEditForm, RegistrationForm, StyledPasswordChangeForm
+from .forms import CreateAdminForm, LoginForm, ProfileEditForm, RegistrationForm, StyledPasswordChangeForm
 
 
 class UserLoginView(LoginView):
@@ -116,3 +116,29 @@ class ProfilePasswordChangeView(LoginRequiredMixin, PasswordChangeView):
         response = super().form_valid(form)
         messages.success(self.request, 'Password changed successfully.')
         return response
+
+
+class SuperAdminRequiredMixin(LoginRequiredMixin, UserPassesTestMixin):
+    """Restricts a view to authenticated super admins only."""
+
+    def test_func(self):
+        return self.request.user.is_super_admin
+
+
+class CreateAdminView(SuperAdminRequiredMixin, FormView):
+    """Lets a super admin create new admin accounts. Regular admins and users are denied."""
+
+    form_class = CreateAdminForm
+    template_name = 'accounts/create_admin.html'
+    success_url = reverse_lazy('create_admin')
+
+    def form_valid(self, form):
+        user, password, was_generated = form.save()
+        if was_generated:
+            messages.success(
+                self.request,
+                f"Admin '{user.username}' created. Generated password: {password}",
+            )
+        else:
+            messages.success(self.request, f"Admin '{user.username}' created successfully.")
+        return super().form_valid(form)

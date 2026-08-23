@@ -327,3 +327,90 @@ class ProfileTest(TestCase):
             response = self.client.get(url)
             self.assertEqual(response.status_code, 302)
             self.assertTrue(response.url.startswith("/login/"))
+
+
+class CreateAdminViewTest(TestCase):
+    """Test cases for the super-admin-only create-admin page."""
+
+    def setUp(self):
+        self.super_admin = User.objects.create_user(
+            username="rootadmin", password="RootPass123!", role=User.Role.SUPER_ADMIN,
+        )
+        self.regular_admin = User.objects.create_user(
+            username="regularadmin", password="RegAdminPass123!", role=User.Role.ADMIN,
+        )
+        self.regular_user = User.objects.create_user(
+            username="regularuser", password="RegUserPass123!",
+        )
+
+    def test_super_admin_can_create_admin_with_explicit_password(self):
+        """A super admin can create a new admin, and the chosen password is used as-is."""
+        self.client.login(username="rootadmin", password="RootPass123!")
+
+        response = self.client.post("/admin-panel/create-admin/", {
+            "username": "newadmin",
+            "email": "newadmin@example.com",
+            "password": "ChosenPass123!",
+        })
+
+        self.assertEqual(response.status_code, 302)
+        new_admin = User.objects.get(username="newadmin")
+        self.assertEqual(new_admin.role, User.Role.ADMIN)
+        self.assertTrue(new_admin.must_change_password)
+        self.assertTrue(new_admin.check_password("ChosenPass123!"))
+
+    def test_super_admin_can_create_admin_with_generated_password(self):
+        """Leaving the password blank generates a random usable password."""
+        self.client.login(username="rootadmin", password="RootPass123!")
+
+        response = self.client.post("/admin-panel/create-admin/", {
+            "username": "newadmin2",
+            "email": "newadmin2@example.com",
+            "password": "",
+        }, follow=True)
+
+        new_admin = User.objects.get(username="newadmin2")
+        self.assertEqual(new_admin.role, User.Role.ADMIN)
+        self.assertTrue(new_admin.has_usable_password())
+        messages = [str(message) for message in response.context["messages"]]
+        self.assertTrue(any("Generated password" in message for message in messages))
+
+    def test_regular_admin_cannot_create_admin(self):
+        """A regular admin (not super admin) is denied access."""
+        self.client.login(username="regularadmin", password="RegAdminPass123!")
+
+        response = self.client.post("/admin-panel/create-admin/", {
+            "username": "blockedadmin",
+            "email": "blocked@example.com",
+            "password": "SomePass123!",
+        })
+
+        self.assertEqual(response.status_code, 403)
+        self.assertFalse(User.objects.filter(username="blockedadmin").exists())
+
+    def test_regular_user_cannot_access_page(self):
+        """A regular, non-admin user is denied access."""
+        self.client.login(username="regularuser", password="RegUserPass123!")
+
+        response = self.client.get("/admin-panel/create-admin/")
+
+        self.assertEqual(response.status_code, 403)
+
+    def test_anonymous_user_is_redirected_to_login(self):
+        """An unauthenticated visitor is redirected to login."""
+        response = self.client.get("/admin-panel/create-admin/")
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(response.url.startswith("/login/"))
+
+    def test_duplicate_username_shows_error(self):
+        """Creating an admin with an existing username re-renders the form with an error."""
+        self.client.login(username="rootadmin", password="RootPass123!")
+
+        response = self.client.post("/admin-panel/create-admin/", {
+            "username": "regularuser",
+            "email": "dup@example.com",
+            "password": "SomePass123!",
+        })
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("username", response.context["form"].errors)
