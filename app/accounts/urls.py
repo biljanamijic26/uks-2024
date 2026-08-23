@@ -16,4 +16,5 @@ urlpatterns = [
         views.ToggleUserBadgeView.as_view(),
         name='toggle_user_badge',
     ),
+    path('admin-panel/create-admin/', views.CreateAdminView.as_view(), name='create_admin'),
 ]
