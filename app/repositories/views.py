@@ -8,8 +8,15 @@ from django.shortcuts import get_object_or_404
 from django.urls import reverse_lazy
 from django.views.generic import CreateView, DeleteView, DetailView, ListView, UpdateView
 
-from .forms import RepositoryCreateForm, RepositoryEditForm, TagCreateForm, TagEditForm
+from .forms import OfficialRepositoryCreateForm, RepositoryCreateForm, RepositoryEditForm, TagCreateForm, TagEditForm
 from .models import Repository, Tag
+
+
+class AdminRequiredMixin(LoginRequiredMixin, UserPassesTestMixin):
+    """Restricts a view to authenticated admins (ADMIN or SUPER_ADMIN)."""
+
+    def test_func(self):
+        return self.request.user.is_admin
 
 
 class RepositoryOwnerRequiredMixin(LoginRequiredMixin, UserPassesTestMixin):
@@ -98,6 +105,28 @@ class RepositoryCreateView(LoginRequiredMixin, CreateView):
         form.instance.owner = self.request.user
         response = super().form_valid(form)
         messages.success(self.request, 'Repository created successfully.')
+        return response
+
+    def get_success_url(self):
+        return reverse_lazy(
+            'repository_detail',
+            kwargs={'owner': self.object.owner.username, 'name': self.object.name},
+        )
+
+
+class OfficialRepositoryCreateView(AdminRequiredMixin, CreateView):
+    """Allows an admin to create an official repository, owned by the admin's account
+    but displayed without a username prefix (see Repository.full_name)."""
+
+    model = Repository
+    form_class = OfficialRepositoryCreateForm
+    template_name = 'repositories/official_repository_form.html'
+
+    def form_valid(self, form):
+        form.instance.owner = self.request.user
+        form.instance.is_official = True
+        response = super().form_valid(form)
+        messages.success(self.request, f"Official repository '{self.object.full_name}' created successfully.")
         return response
 
     def get_success_url(self):

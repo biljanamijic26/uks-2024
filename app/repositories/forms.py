@@ -67,6 +67,23 @@ class TagEditForm(forms.ModelForm):
         _style_fields(self)
 
 
+class OfficialRepositoryCreateForm(forms.ModelForm):
+    """Form for admins to create an official repository. is_official is always
+    forced to True in the view; it is not exposed as a field here."""
+
+    class Meta:
+        model = Repository
+        fields = ('name', 'short_description', 'visibility')
+        widgets = {
+            'short_description': forms.Textarea(attrs={'rows': 3}),
+            'visibility': forms.RadioSelect(attrs={'class': 'form-check-input mt-1'}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        _style_fields(self)
+
+
 class RepositoryEditForm(forms.ModelForm):
     """Form for editing an existing repository. Name is not editable."""
 
