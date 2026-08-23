@@ -327,3 +327,75 @@ class ProfileTest(TestCase):
             response = self.client.get(url)
             self.assertEqual(response.status_code, 302)
             self.assertTrue(response.url.startswith("/login/"))
+
+
+class UserManagementViewTest(TestCase):
+    """Test cases for the admin user search / badge assignment page."""
+
+    def setUp(self):
+        self.admin = User.objects.create_user(
+            username="siteadmin", password="AdminPass123!", role=User.Role.ADMIN,
+        )
+        self.regular_user = User.objects.create_user(
+            username="janedoe", email="jane@example.com", password="RegularPass123!",
+        )
+        self.other_user = User.objects.create_user(
+            username="johnsmith", email="john@example.com", password="RegularPass123!",
+        )
+
+    def test_anonymous_user_is_redirected_to_login(self):
+        """An unauthenticated visitor cannot reach the user management page."""
+        response = self.client.get("/admin-panel/users/")
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(response.url.startswith("/login/"))
+
+    def test_regular_user_is_forbidden(self):
+        """A non-admin, authenticated user is denied access."""
+        self.client.login(username="janedoe", password="RegularPass123!")
+        response = self.client.get("/admin-panel/users/")
+        self.assertEqual(response.status_code, 403)
+
+    def test_admin_can_search_users_by_username(self):
+        """Admins can filter the user list by username."""
+        self.client.login(username="siteadmin", password="AdminPass123!")
+        response = self.client.get("/admin-panel/users/", {"q": "jane"})
+        self.assertEqual(response.status_code, 200)
+        usernames = [user.username for user in response.context["users"]]
+        self.assertIn("janedoe", usernames)
+        self.assertNotIn("johnsmith", usernames)
+
+    def test_admin_can_grant_verified_publisher_badge(self):
+        """Posting a toggle request flips the target user's badge field."""
+        self.client.login(username="siteadmin", password="AdminPass123!")
+        self.assertFalse(self.regular_user.is_verified_publisher)
+
+        response = self.client.post(
+            "/admin-panel/users/janedoe/toggle-badge/", {"badge": "is_verified_publisher"},
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.regular_user.refresh_from_db()
+        self.assertTrue(self.regular_user.is_verified_publisher)
+
+    def test_admin_can_revoke_badge_by_toggling_again(self):
+        """Toggling an already-granted badge removes it."""
+        self.regular_user.is_sponsored_oss = True
+        self.regular_user.save(update_fields=["is_sponsored_oss"])
+        self.client.login(username="siteadmin", password="AdminPass123!")
+
+        self.client.post("/admin-panel/users/janedoe/toggle-badge/", {"badge": "is_sponsored_oss"})
+
+        self.regular_user.refresh_from_db()
+        self.assertFalse(self.regular_user.is_sponsored_oss)
+
+    def test_regular_user_cannot_toggle_badges(self):
+        """A non-admin cannot assign badges to other users."""
+        self.client.login(username="janedoe", password="RegularPass123!")
+
+        response = self.client.post(
+            "/admin-panel/users/johnsmith/toggle-badge/", {"badge": "is_verified_publisher"},
+        )
+
+        self.assertEqual(response.status_code, 403)
+        self.other_user.refresh_from_db()
+        self.assertFalse(self.other_user.is_verified_publisher)
