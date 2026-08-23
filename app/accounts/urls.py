@@ -10,4 +10,10 @@ urlpatterns = [
     path('profile/', views.ProfileView.as_view(), name='profile'),
     path('profile/edit/', views.ProfileEditView.as_view(), name='profile_edit'),
     path('profile/change-password/', views.ProfilePasswordChangeView.as_view(), name='profile_password_change'),
+    path('admin-panel/users/', views.UserManagementView.as_view(), name='user_management'),
+    path(
+        'admin-panel/users/<str:username>/toggle-badge/',
+        views.ToggleUserBadgeView.as_view(),
+        name='toggle_user_badge',
+    ),
 ]

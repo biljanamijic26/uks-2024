@@ -2,15 +2,20 @@
 Views for accounts app.
 """
 from django.contrib import messages
-from django.contrib.auth import update_session_auth_hash
+from django.contrib.auth import get_user_model, update_session_auth_hash
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.contrib.auth.views import LoginView, LogoutView, PasswordChangeView
-from django.shortcuts import redirect
-from django.urls import reverse_lazy
-from django.views.generic import CreateView, TemplateView, UpdateView
+from django.db.models import Q
+from django.http import Http404
+from django.shortcuts import get_object_or_404, redirect
+from django.urls import reverse, reverse_lazy
+from django.views import View
+from django.views.generic import CreateView, ListView, TemplateView, UpdateView
 from django.views.generic.edit import FormView
 
 from .forms import LoginForm, ProfileEditForm, RegistrationForm, StyledPasswordChangeForm
+
+User = get_user_model()
 
 
 class UserLoginView(LoginView):
@@ -116,3 +121,56 @@ class ProfilePasswordChangeView(LoginRequiredMixin, PasswordChangeView):
         response = super().form_valid(form)
         messages.success(self.request, 'Password changed successfully.')
         return response
+
+
+class AdminRequiredMixin(LoginRequiredMixin, UserPassesTestMixin):
+    """Restricts a view to authenticated admins (ADMIN or SUPER_ADMIN)."""
+
+    def test_func(self):
+        return self.request.user.is_admin
+
+
+class UserManagementView(AdminRequiredMixin, ListView):
+    """Lets admins search users by username/email and manage their badges."""
+
+    model = User
+    template_name = 'accounts/user_management.html'
+    context_object_name = 'users'
+    paginate_by = 20
+
+    def get_queryset(self):
+        queryset = User.objects.all().order_by('username')
+        query = self.request.GET.get('q', '').strip()
+
+        if query:
+            queryset = queryset.filter(Q(username__icontains=query) | Q(email__icontains=query))
+
+        return queryset
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['query'] = self.request.GET.get('q', '')
+        return context
+
+
+class ToggleUserBadgeView(AdminRequiredMixin, View):
+    """Toggles a badge (verified publisher / sponsored OSS) on a target user."""
+
+    BADGE_FIELDS = ('is_verified_publisher', 'is_sponsored_oss')
+
+    def post(self, request, username):
+        badge = request.POST.get('badge')
+        if badge not in self.BADGE_FIELDS:
+            raise Http404('Unknown badge.')
+
+        user = get_object_or_404(User, username=username)
+        setattr(user, badge, not getattr(user, badge))
+        user.save(update_fields=[badge])
+
+        messages.success(request, f"Updated {badge.replace('_', ' ')} badge for {user.username}.")
+
+        url = reverse('user_management')
+        query = request.POST.get('q', '')
+        if query:
+            url = f'{url}?q={query}'
+        return redirect(url)
