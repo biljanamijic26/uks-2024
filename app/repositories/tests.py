@@ -156,6 +156,21 @@ class TagViewsTest(TestCase):
         self.assertEqual(response.status_code, 403)
         self.assertFalse(Tag.objects.filter(repository=self.repo, name='latest').exists())
 
+    def test_create_tag_with_duplicate_name_shows_form_error(self):
+        """Creating a tag with a name that already exists on the repository shows a form error."""
+        Tag.objects.create(repository=self.repo, name='latest', digest='sha256:' + 'a' * 64, size=1024)
+        self.client.login(username='owner', password='pass12345')
+
+        response = self.client.post('/repositories/owner/my-repo/tags/new/', {
+            'name': 'latest',
+            'digest': 'sha256:' + 'b' * 64,
+            'size': 2048,
+        })
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.context['form'].errors)
+        self.assertEqual(Tag.objects.filter(repository=self.repo, name='latest').count(), 1)
+
     def test_list_tags_for_repository(self):
         """Tags are listed on the repository detail page, newest first."""
         older = Tag.objects.create(repository=self.repo, name='v1.0.0', digest='sha256:' + 'a' * 64, size=1024)
