@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+
+{% block title %}{% if object %}Edit {{ object.full_name }}{% else %}New Tag{% endif %} - Docker Registry Platform{% endblock %}
+
+{% block content %}
+<a href="{% url 'repository_detail' owner=repository.owner.username name=repository.name %}"
+   class="text-decoration-none d-inline-flex align-items-center mb-3">
+    <i class="bi bi-arrow-left me-1"></i>Back to {{ repository.full_name }}
+</a>
+
+<div class="row justify-content-center">
+    <div class="col-md-10 col-lg-8">
+        <div class="card border-0 shadow-sm rounded-4">
+            <div class="card-body p-4 p-md-5">
+                <div class="d-flex align-items-center gap-2 mb-1">
+                    <i class="bi bi-tag fs-4 text-primary"></i>
+                    <h1 class="h3 mb-0">{% if object %}Edit tag{% else %}Create tag{% endif %}</h1>
+                </div>
+                <p class="text-muted mb-4">
+                    {% if object %}Update this tag's digest and size.
+                    {% else %}Add a new tag to {{ repository.full_name }}.{% endif %}
+                </p>
+                <form method="post" novalidate>
+                    {% csrf_token %}
+
+                    {% if object %}
+                    <div class="mb-3">
+                        <label class="form-label">Tag Name</label>
+                        <input type="text" class="form-control" value="{{ object.name }}" disabled>
+                        <div class="form-text"><i class="bi bi-lock-fill"></i> Name cannot be changed.</div>
+                    </div>
+                    {% else %}
+                    <div class="mb-3">
+                        <label for="{{ form.name.id_for_label }}" class="form-label">Tag Name</label>
+                        {{ form.name }}
+                        <div class="form-text">e.g. <code>latest</code> or <code>v1.0.0</code>.</div>
+                        {% for error in form.name.errors %}
+                        <div class="text-danger small">{{ error }}</div>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+
+                    <div class="mb-3">
+                        <label for="{{ form.digest.id_for_label }}" class="form-label">Digest</label>
+                        {{ form.digest }}
+                        <div class="form-text">SHA256 digest, e.g. <code>sha256:&lt;64 hex chars&gt;</code>.</div>
+                        {% for error in form.digest.errors %}
+                        <div class="text-danger small">{{ error }}</div>
+                        {% endfor %}
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="{{ form.size.id_for_label }}" class="form-label">Size (bytes)</label>
+                        {{ form.size }}
+                        {% for error in form.size.errors %}
+                        <div class="text-danger small">{{ error }}</div>
+                        {% endfor %}
+                    </div>
+
+                    {% if form.non_field_errors %}
+                    <div class="text-danger small mb-3">
+                        {% for error in form.non_field_errors %}
+                        <p class="mb-0">{{ error }}</p>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+
+                    <div class="d-flex gap-2 mt-4">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check-lg me-1"></i>{% if object %}Save changes{% else %}Create{% endif %}
+                        </button>
+                        <a href="{% url 'repository_detail' owner=repository.owner.username name=repository.name %}"
+                           class="btn btn-outline-secondary">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

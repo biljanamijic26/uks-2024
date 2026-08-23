@@ -53,6 +53,62 @@
                 {% endif %}
             </div>
         </div>
+
+        <div class="card border-0 shadow-sm rounded-4 mt-4">
+            <div class="card-body p-4 p-md-5">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h2 class="h5 mb-0"><i class="bi bi-tags me-2"></i>Tags</h2>
+                    {% if user == repository.owner %}
+                    <a href="{% url 'tag_create' owner=repository.owner.username name=repository.name %}"
+                       class="btn btn-sm btn-primary">
+                        <i class="bi bi-plus-lg me-1"></i>New tag
+                    </a>
+                    {% endif %}
+                </div>
+
+                {% if tags %}
+                <div class="table-responsive">
+                    <table class="table align-middle">
+                        <thead>
+                            <tr>
+                                <th>Tag</th>
+                                <th>Digest</th>
+                                <th>Size</th>
+                                <th>Created</th>
+                                {% if user == repository.owner %}
+                                <th></th>
+                                {% endif %}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for tag in tags %}
+                            <tr>
+                                <td>{{ tag.name }}</td>
+                                <td><code>{{ tag.short_digest }}</code></td>
+                                <td>{{ tag.size_display }}</td>
+                                <td>{{ tag.created_at|date:"F j, Y" }}</td>
+                                {% if user == repository.owner %}
+                                <td class="text-end">
+                                    <a href="{% url 'tag_edit' owner=repository.owner.username name=repository.name tag_name=tag.name %}"
+                                       class="btn btn-sm btn-outline-secondary">
+                                        <i class="bi bi-pencil-square"></i>
+                                    </a>
+                                    <a href="{% url 'tag_delete' owner=repository.owner.username name=repository.name tag_name=tag.name %}"
+                                       class="btn btn-sm btn-outline-danger">
+                                        <i class="bi bi-trash"></i>
+                                    </a>
+                                </td>
+                                {% endif %}
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <p class="text-muted mb-0">This repository doesn't have any tags yet.</p>
+                {% endif %}
+            </div>
+        </div>
     </div>
 </div>
 {% endblock %}
