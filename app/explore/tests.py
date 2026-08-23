@@ -107,3 +107,23 @@ class ExploreListViewTest(TestCase):
         response = self.client.get('/explore/')
 
         self.assertNotContains(response, 'Verified Publisher')
+
+    def test_official_image_badge_shown_for_official_repository(self):
+        """The 'Docker Official Image' badge is shown for an official repository."""
+        Repository.objects.create(owner=self.owner, name='nginx', is_official=True)
+
+        response = self.client.get('/explore/')
+
+        self.assertContains(response, 'Docker Official Image')
+
+    def test_official_repositories_are_ranked_first(self):
+        """Official repositories appear before regular ones, regardless of update recency."""
+        regular = Repository.objects.create(owner=self.owner, name='regular-repo')
+        official = Repository.objects.create(owner=self.owner, name='nginx', is_official=True)
+        regular.save()  # bump updated_at so it's more recently updated than the official repo
+
+        response = self.client.get('/explore/')
+
+        repositories = list(response.context['repositories'])
+        self.assertEqual(repositories[0], official)
+        self.assertEqual(repositories[1], regular)
