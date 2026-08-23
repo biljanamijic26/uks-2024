@@ -38,9 +38,14 @@
                         <h5 class="card-title mb-0 text-body">
                             <i class="bi bi-box-seam me-2 text-primary"></i>{{ repository.full_name }}
                         </h5>
-                        {% if repository.is_official %}
-                        <span class="badge text-bg-primary"><i class="bi bi-patch-check-fill"></i> Official</span>
-                        {% endif %}
+                        <div class="d-flex flex-column gap-1 align-items-end">
+                            {% if repository.is_official %}
+                            <span class="badge text-bg-primary"><i class="bi bi-patch-check-fill"></i> Official</span>
+                            {% endif %}
+                            {% if repository.owner.is_verified_publisher %}
+                            <span class="badge text-bg-info"><i class="bi bi-shield-check"></i> Verified Publisher</span>
+                            {% endif %}
+                        </div>
                     </div>
                     <p class="card-text text-muted mb-2">
                         {{ repository.short_description|default:"No description provided."|truncatechars:80 }}
