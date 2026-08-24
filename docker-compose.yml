@@ -62,9 +62,24 @@ services:
       - web
     restart: unless-stopped
 
+  registry:
+    image: registry:2
+    environment:
+      REGISTRY_AUTH: htpasswd
+      REGISTRY_AUTH_HTPASSWD_REALM: Registry Realm
+      REGISTRY_AUTH_HTPASSWD_PATH: /auth/htpasswd
+      REGISTRY_STORAGE_DELETE_ENABLED: "true"
+    volumes:
+      - ./auth:/auth:ro
+      - registry_data:/var/lib/registry
+    ports:
+      - "5000:5000"
+    restart: unless-stopped
+
 volumes:
   postgres_data:
   redis_data:
   elasticsearch_data:
   static_volume:
   logs_volume:
+  registry_data:
