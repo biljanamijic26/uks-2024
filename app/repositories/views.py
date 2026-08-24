@@ -78,6 +78,15 @@ class RepositoryDetailView(DetailView):
     template_name = 'repositories/repository_detail.html'
     context_object_name = 'repository'
 
+    TAG_SORT_OPTIONS = {
+        'newest': ('-created_at', '-id'),
+        'oldest': ('created_at', 'id'),
+        'name': ('name',),
+        'size': ('-size',),
+    }
+    DEFAULT_TAG_SORT = 'newest'
+    TAG_SORT_SESSION_KEY = 'tag_sort'
+
     def get_object(self, queryset=None):
         repository = get_object_or_404(
             Repository,
@@ -90,7 +99,26 @@ class RepositoryDetailView(DetailView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['tags'] = self.object.tags.order_by('-created_at', '-id')
+
+        sort = self.request.GET.get('sort')
+        if sort in self.TAG_SORT_OPTIONS:
+            self.request.session[self.TAG_SORT_SESSION_KEY] = sort
+        else:
+            sort = self.request.session.get(self.TAG_SORT_SESSION_KEY, self.DEFAULT_TAG_SORT)
+            if sort not in self.TAG_SORT_OPTIONS:
+                sort = self.DEFAULT_TAG_SORT
+
+        query = self.request.GET.get('q', '').strip()
+
+        tags = self.object.tags.all()
+        if query:
+            tags = tags.filter(name__icontains=query)
+        tags = tags.order_by(*self.TAG_SORT_OPTIONS[sort])
+
+        context['tags'] = tags
+        context['tag_sort'] = sort
+        context['tag_query'] = query
+        context['tags_tab_active'] = 'sort' in self.request.GET or 'q' in self.request.GET
         return context
 
 

@@ -239,6 +239,81 @@ class TagViewsTest(TestCase):
         self.assertTrue(response.url.startswith('/login/'))
 
 
+class TagSortAndFilterTest(TestCase):
+    """Test cases for tag sorting and filtering on the repository detail page."""
+
+    def setUp(self):
+        self.owner = User.objects.create_user(username='owner', password='pass12345')
+        self.repo = Repository.objects.create(owner=self.owner, name='my-repo')
+        self.older = Tag.objects.create(
+            repository=self.repo, name='alpha', digest='sha256:' + 'a' * 64, size=1024,
+        )
+        self.newer = Tag.objects.create(
+            repository=self.repo, name='beta', digest='sha256:' + 'b' * 64, size=2048,
+        )
+
+    def test_default_sort_is_newest_first(self):
+        """With no sort parameter, tags are ordered newest first."""
+        response = self.client.get('/repositories/owner/my-repo/')
+
+        tags = list(response.context['tags'])
+        self.assertEqual(tags, [self.newer, self.older])
+
+    def test_sort_by_oldest(self):
+        """sort=oldest orders tags oldest first."""
+        response = self.client.get('/repositories/owner/my-repo/', {'sort': 'oldest'})
+
+        tags = list(response.context['tags'])
+        self.assertEqual(tags, [self.older, self.newer])
+
+    def test_sort_by_name(self):
+        """sort=name orders tags alphabetically by name."""
+        Tag.objects.create(repository=self.repo, name='gamma', digest='sha256:' + 'c' * 64, size=512)
+
+        response = self.client.get('/repositories/owner/my-repo/', {'sort': 'name'})
+
+        names = [tag.name for tag in response.context['tags']]
+        self.assertEqual(names, ['alpha', 'beta', 'gamma'])
+
+    def test_sort_by_size(self):
+        """sort=size orders tags by size, largest first."""
+        response = self.client.get('/repositories/owner/my-repo/', {'sort': 'size'})
+
+        tags = list(response.context['tags'])
+        self.assertEqual(tags, [self.newer, self.older])
+
+    def test_name_filter_returns_matching_tags(self):
+        """The 'q' parameter filters tags whose name contains the search term."""
+        response = self.client.get('/repositories/owner/my-repo/', {'q': 'alp'})
+
+        tags = list(response.context['tags'])
+        self.assertEqual(tags, [self.older])
+
+    def test_name_filter_is_case_insensitive(self):
+        """Name filtering matches regardless of case."""
+        response = self.client.get('/repositories/owner/my-repo/', {'q': 'BETA'})
+
+        tags = list(response.context['tags'])
+        self.assertEqual(tags, [self.newer])
+
+    def test_name_filter_with_no_matches_shows_empty_message(self):
+        """A filter with no matches shows a 'no tags match' message instead of the empty-repo message."""
+        response = self.client.get('/repositories/owner/my-repo/', {'q': 'nonexistent'})
+
+        self.assertEqual(len(response.context['tags']), 0)
+        self.assertContains(response, 'No tags match')
+
+    def test_sort_preference_persists_in_session(self):
+        """Choosing a sort option stores it in the session and reapplies it on the next request."""
+        self.client.get('/repositories/owner/my-repo/', {'sort': 'oldest'})
+
+        response = self.client.get('/repositories/owner/my-repo/')
+
+        self.assertEqual(response.context['tag_sort'], 'oldest')
+        tags = list(response.context['tags'])
+        self.assertEqual(tags, [self.older, self.newer])
+
+
 class RepositoryListViewTest(TestCase):
     """Test cases for the 'my repositories' list view."""
 
