@@ -2,116 +2,202 @@
 
 {% block title %}{{ repository.full_name }} - Docker Registry Platform{% endblock %}
 
+{% block extra_css %}
+<style>
+    .repo-tabs {
+        border-bottom: 1px solid var(--bs-border-color);
+        gap: 1.5rem;
+    }
+    .repo-tabs .nav-link {
+        border: none;
+        border-bottom: 2px solid transparent;
+        border-radius: 0;
+        padding: .5rem .1rem .75rem;
+        color: var(--bs-secondary-color);
+        font-weight: 500;
+    }
+    .repo-tabs .nav-link.active {
+        color: var(--bs-primary);
+        font-weight: 600;
+        border-bottom-color: var(--bs-primary);
+        background-color: transparent;
+    }
+    .repo-sort-label {
+        white-space: nowrap;
+    }
+    .tag-digest {
+        color: var(--bs-secondary-color);
+    }
+    .repo-meta-list .list-group-item {
+        background-color: transparent;
+        border-color: var(--bs-border-color);
+    }
+    .repo-panel {
+        border: 1px solid var(--bs-border-color);
+        border-radius: .5rem;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
-<a href="{% url 'repository_list' %}" class="text-decoration-none d-inline-flex align-items-center mb-3">
+<a href="{% url 'repository_list' %}" class="text-decoration-none d-inline-flex align-items-center mb-4">
     <i class="bi bi-arrow-left me-1"></i>Back to repositories
 </a>
 
-<div class="row justify-content-center">
-    <div class="col-md-9 col-lg-7">
-        <div class="card border-0 shadow-sm rounded-4">
-            <div class="card-body p-4 p-md-5">
-                <div class="d-flex justify-content-between align-items-start mb-4">
-                    <h1 class="h3 mb-0">{{ repository.full_name }}</h1>
-                    <div class="d-flex flex-column gap-1 align-items-end">
-                        {% include "repositories/_official_badge.html" with repository=repository %}
-                        {% if repository.visibility == "private" %}
-                        <span class="badge text-bg-secondary"><i class="bi bi-lock-fill"></i> Private</span>
-                        {% else %}
-                        <span class="badge text-bg-light"><i class="bi bi-globe"></i> Public</span>
-                        {% endif %}
+<div class="d-flex justify-content-between align-items-start mb-2">
+    <h1 class="h3 fw-bold mb-0">{{ repository.full_name }}</h1>
+    <div class="d-flex flex-column gap-1 align-items-end">
+        {% include "repositories/_official_badge.html" with repository=repository %}
+        {% if repository.visibility == "private" %}
+        <span class="badge text-bg-secondary"><i class="bi bi-lock-fill"></i> Private</span>
+        {% else %}
+        <span class="badge text-bg-light"><i class="bi bi-globe"></i> Public</span>
+        {% endif %}
+    </div>
+</div>
+<p class="text-muted mb-4">
+    By <span class="fw-semibold">{{ repository.owner.username }}</span>
+    · Updated {{ repository.updated_at|date:"F j, Y" }}
+</p>
+
+<ul class="nav repo-tabs mb-4">
+    <li class="nav-item">
+        <button class="nav-link {% if not tags_tab_active %}active{% endif %}" data-bs-toggle="tab"
+                data-bs-target="#overview-pane" type="button">
+            Overview
+        </button>
+    </li>
+    <li class="nav-item">
+        <button class="nav-link {% if tags_tab_active %}active{% endif %}" data-bs-toggle="tab"
+                data-bs-target="#tags-pane" type="button">
+            Tags <span class="text-muted">{{ tags.count }}</span>
+        </button>
+    </li>
+</ul>
+
+<div class="tab-content">
+    <div class="tab-pane fade {% if not tags_tab_active %}show active{% endif %}" id="overview-pane">
+        <div class="row g-4">
+            <div class="col-lg-7">
+                <div class="repo-panel p-4 h-100">
+                    <h2 class="h6 fw-bold mb-3">Repository info</h2>
+                    <ul class="list-group list-group-flush repo-meta-list mb-4">
+                        <li class="list-group-item d-flex justify-content-between align-items-center px-0">
+                            <span class="text-muted"><i class="bi bi-calendar3 me-2"></i>Created</span>
+                            <span>{{ repository.created_at|date:"F j, Y" }}</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center px-0">
+                            <span class="text-muted"><i class="bi bi-clock-history me-2"></i>Last updated</span>
+                            <span>{{ repository.updated_at|date:"F j, Y" }}</span>
+                        </li>
+                    </ul>
+
+                    {% if user == repository.owner %}
+                    <div class="d-flex gap-2">
+                        <a href="{% url 'repository_edit' owner=repository.owner.username name=repository.name %}"
+                           class="btn btn-primary">
+                            <i class="bi bi-pencil-square me-1"></i>Edit
+                        </a>
+                        <a href="{% url 'repository_delete' owner=repository.owner.username name=repository.name %}"
+                           class="btn btn-outline-danger">
+                            <i class="bi bi-trash me-1"></i>Delete
+                        </a>
                     </div>
+                    {% endif %}
                 </div>
-
-                <ul class="list-group list-group-flush mb-4">
-                    <li class="list-group-item d-flex justify-content-between align-items-center px-0">
-                        <span class="text-muted"><i class="bi bi-person me-2"></i>Owner</span>
-                        <span>{{ repository.owner.username }}</span>
-                    </li>
-                    <li class="list-group-item d-flex justify-content-between align-items-center px-0">
-                        <span class="text-muted"><i class="bi bi-card-text me-2"></i>Description</span>
-                        <span>{{ repository.short_description|default:"—" }}</span>
-                    </li>
-                    <li class="list-group-item d-flex justify-content-between align-items-center px-0">
-                        <span class="text-muted"><i class="bi bi-calendar3 me-2"></i>Created</span>
-                        <span>{{ repository.created_at|date:"F j, Y" }}</span>
-                    </li>
-                    <li class="list-group-item d-flex justify-content-between align-items-center px-0">
-                        <span class="text-muted"><i class="bi bi-clock-history me-2"></i>Last updated</span>
-                        <span>{{ repository.updated_at|date:"F j, Y" }}</span>
-                    </li>
-                </ul>
-
-                {% if user == repository.owner %}
-                <div class="d-flex gap-2">
-                    <a href="{% url 'repository_edit' owner=repository.owner.username name=repository.name %}"
-                       class="btn btn-primary">
-                        <i class="bi bi-pencil-square me-1"></i>Edit
-                    </a>
-                    <a href="{% url 'repository_delete' owner=repository.owner.username name=repository.name %}"
-                       class="btn btn-outline-danger">
-                        <i class="bi bi-trash me-1"></i>Delete
-                    </a>
+            </div>
+            <div class="col-lg-5">
+                <div class="repo-panel p-4 h-100">
+                    <p class="mb-0">{{ repository.short_description|default:"No description provided." }}</p>
                 </div>
-                {% endif %}
             </div>
         </div>
+    </div>
 
-        <div class="card border-0 shadow-sm rounded-4 mt-4">
-            <div class="card-body p-4 p-md-5">
-                <div class="d-flex justify-content-between align-items-center mb-4">
-                    <h2 class="h5 mb-0"><i class="bi bi-tags me-2"></i>Tags</h2>
-                    {% if user == repository.owner %}
-                    <a href="{% url 'tag_create' owner=repository.owner.username name=repository.name %}"
-                       class="btn btn-sm btn-primary">
-                        <i class="bi bi-plus-lg me-1"></i>New tag
+    <div class="tab-pane fade {% if tags_tab_active %}show active{% endif %}" id="tags-pane">
+        <div class="d-flex justify-content-end mb-3">
+            {% if user == repository.owner %}
+            <a href="{% url 'tag_create' owner=repository.owner.username name=repository.name %}"
+               class="btn btn-sm btn-primary">
+                <i class="bi bi-plus-lg me-1"></i>New tag
+            </a>
+            {% endif %}
+        </div>
+
+        <form method="get" class="row g-2 align-items-center mb-4">
+            <div class="col-auto d-flex align-items-center gap-2">
+                <label for="tag-sort" class="repo-sort-label mb-0 text-muted">Sort by</label>
+                <select id="tag-sort" name="sort" class="form-select" aria-label="Sort tags"
+                        onchange="this.form.submit()">
+                    <option value="newest" {% if tag_sort == "newest" %}selected{% endif %}>
+                        Newest</option>
+                    <option value="oldest" {% if tag_sort == "oldest" %}selected{% endif %}>
+                        Oldest</option>
+                    <option value="name" {% if tag_sort == "name" %}selected{% endif %}>
+                        Name (A-Z)</option>
+                    <option value="size" {% if tag_sort == "size" %}selected{% endif %}>
+                        Size</option>
+                </select>
+            </div>
+            <div class="col">
+                <div class="input-group">
+                    <span class="input-group-text bg-transparent"><i class="bi bi-search"></i></span>
+                    <input type="search" name="q" value="{{ tag_query }}"
+                           placeholder="Filter tags" class="form-control"
+                           aria-label="Filter tags by name">
+                    {% if tag_query %}
+                    <a href="?sort={{ tag_sort }}" class="input-group-text bg-transparent"
+                       aria-label="Clear filter" title="Clear filter">
+                        <i class="bi bi-x-lg"></i>
                     </a>
                     {% endif %}
                 </div>
-
-                {% if tags %}
-                <div class="table-responsive">
-                    <table class="table align-middle">
-                        <thead>
-                            <tr>
-                                <th>Tag</th>
-                                <th>Digest</th>
-                                <th>Size</th>
-                                <th>Created</th>
-                                {% if user == repository.owner %}
-                                <th></th>
-                                {% endif %}
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for tag in tags %}
-                            <tr>
-                                <td>{{ tag.name }}</td>
-                                <td><code>{{ tag.short_digest }}</code></td>
-                                <td>{{ tag.size_display }}</td>
-                                <td>{{ tag.created_at|date:"F j, Y" }}</td>
-                                {% if user == repository.owner %}
-                                <td class="text-end">
-                                    <a href="{% url 'tag_edit' owner=repository.owner.username name=repository.name tag_name=tag.name %}"
-                                       class="btn btn-sm btn-outline-secondary">
-                                        <i class="bi bi-pencil-square"></i>
-                                    </a>
-                                    <a href="{% url 'tag_delete' owner=repository.owner.username name=repository.name tag_name=tag.name %}"
-                                       class="btn btn-sm btn-outline-danger">
-                                        <i class="bi bi-trash"></i>
-                                    </a>
-                                </td>
-                                {% endif %}
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-                {% else %}
-                <p class="text-muted mb-0">This repository doesn't have any tags yet.</p>
-                {% endif %}
             </div>
+        </form>
+
+        {% if tags %}
+        <div class="table-responsive">
+            <table class="table align-middle">
+                <thead>
+                    <tr>
+                        <th>Tag</th>
+                        <th>Digest</th>
+                        <th>Size</th>
+                        <th>Created</th>
+                        {% if user == repository.owner %}
+                        <th></th>
+                        {% endif %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for tag in tags %}
+                    <tr>
+                        <td>{{ tag.name }}</td>
+                        <td><code class="tag-digest">{{ tag.short_digest }}</code></td>
+                        <td>{{ tag.size_display }}</td>
+                        <td>{{ tag.created_at|date:"F j, Y" }}</td>
+                        {% if user == repository.owner %}
+                        <td class="text-end">
+                            <a href="{% url 'tag_edit' owner=repository.owner.username name=repository.name tag_name=tag.name %}"
+                               class="btn btn-sm btn-outline-secondary">
+                                <i class="bi bi-pencil-square"></i>
+                            </a>
+                            <a href="{% url 'tag_delete' owner=repository.owner.username name=repository.name tag_name=tag.name %}"
+                               class="btn btn-sm btn-outline-danger">
+                                <i class="bi bi-trash"></i>
+                            </a>
+                        </td>
+                        {% endif %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
         </div>
+        {% elif tag_query %}
+        <p class="text-muted mb-0">No tags match "{{ tag_query }}".</p>
+        {% else %}
+        <p class="text-muted mb-0">This repository doesn't have any tags yet.</p>
+        {% endif %}
     </div>
 </div>
 {% endblock %}
