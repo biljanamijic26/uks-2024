@@ -18,11 +18,50 @@
 <h1 class="h3 mb-4">Explore</h1>
 
 <form method="get" id="explore-search-form" class="mb-4">
-    <div class="input-group">
+    <div class="input-group mb-2">
         <span class="input-group-text"><i class="bi bi-search"></i></span>
         <input type="text" name="q" value="{{ query }}" class="form-control" id="explore-search-input"
                placeholder="Search public repositories by name or description">
         <button type="submit" class="btn btn-primary">Search</button>
+    </div>
+    <div class="d-flex flex-wrap align-items-center gap-3">
+        <div class="form-check form-check-inline mb-0">
+            <input class="form-check-input" type="checkbox" name="official" value="1" id="filter-official"
+                   {% if filters.official %}checked{% endif %} onchange="this.form.requestSubmit()">
+            <label class="form-check-label" for="filter-official">Official only</label>
+        </div>
+        <div class="form-check form-check-inline mb-0">
+            <input class="form-check-input" type="checkbox" name="verified" value="1" id="filter-verified"
+                   {% if filters.verified %}checked{% endif %} onchange="this.form.requestSubmit()">
+            <label class="form-check-label" for="filter-verified">Verified Publisher only</label>
+        </div>
+        <div class="form-check form-check-inline mb-0">
+            <input class="form-check-input" type="checkbox" name="sponsored" value="1" id="filter-sponsored"
+                   {% if filters.sponsored %}checked{% endif %} onchange="this.form.requestSubmit()">
+            <label class="form-check-label" for="filter-sponsored">Sponsored OSS only</label>
+        </div>
+
+        <div class="d-flex align-items-center gap-2">
+            <label for="sort-select" class="small text-muted mb-0">Sort by</label>
+            <select name="sort" id="sort-select" class="form-select form-select-sm"
+                    onchange="this.form.requestSubmit()">
+                <option value="relevance" {% if sort == 'relevance' %}selected{% endif %}>Relevance</option>
+                <option value="updated" {% if sort == 'updated' %}selected{% endif %}>Recently Updated</option>
+                <option value="name_asc" {% if sort == 'name_asc' %}selected{% endif %}>Name (A-Z)</option>
+                <option value="name_desc" {% if sort == 'name_desc' %}selected{% endif %}>Name (Z-A)</option>
+            </select>
+        </div>
+
+        <span class="badge text-bg-secondary" id="active-filter-count">
+            {{ active_filter_count }} active filter{{ active_filter_count|pluralize }}
+        </span>
+
+        {% if active_filter_count %}
+        <a href="{% if query %}?q={{ query }}{% else %}{% url 'explore' %}{% endif %}"
+           id="clear-filters-link" class="btn btn-sm btn-outline-secondary">
+            <i class="bi bi-x-circle"></i> Clear filters
+        </a>
+        {% endif %}
     </div>
 </form>
 
@@ -63,7 +102,7 @@
     <ul class="pagination justify-content-center">
         {% if page_obj.has_previous %}
         <li class="page-item">
-            <a class="page-link" href="?q={{ query }}&page={{ page_obj.previous_page_number }}">Previous</a>
+            <a class="page-link" href="?{{ querystring }}&page={{ page_obj.previous_page_number }}">Previous</a>
         </li>
         {% endif %}
         <li class="page-item disabled">
@@ -71,7 +110,7 @@
         </li>
         {% if page_obj.has_next %}
         <li class="page-item">
-            <a class="page-link" href="?q={{ query }}&page={{ page_obj.next_page_number }}">Next</a>
+            <a class="page-link" href="?{{ querystring }}&page={{ page_obj.next_page_number }}">Next</a>
         </li>
         {% endif %}
     </ul>
@@ -83,6 +122,8 @@
     <i class="bi bi-compass display-4 text-muted"></i>
     {% if query %}
     <p class="text-muted mt-3 mb-0">No public repositories match "{{ query }}".</p>
+    {% elif active_filter_count %}
+    <p class="text-muted mt-3 mb-0">No public repositories match the selected filters.</p>
     {% else %}
     <p class="text-muted mt-3 mb-0">No public repositories available yet.</p>
     {% endif %}
