@@ -1,11 +1,15 @@
 """
 Tests for repositories app.
 """
+from unittest.mock import Mock, patch
+
+import requests
 from django.contrib.auth import get_user_model
 from django.db import IntegrityError
 from django.test import TestCase
 
 from .models import Repository, Tag
+from .services import RegistryError, RegistryService
 
 User = get_user_model()
 
@@ -535,3 +539,101 @@ class OfficialRepositoryCreateViewTest(TestCase):
         response = self.client.get('/repositories/regular/my-repo/')
 
         self.assertNotContains(response, 'Docker Official Image')
+
+
+class RegistryServiceTest(TestCase):
+    """Test cases for RegistryService."""
+
+    def setUp(self):
+        self.service = RegistryService(
+            base_url='http://registry:5000', username='admin', password='secret',
+        )
+
+    def _mock_response(self, json_data=None, status_code=200):
+        response = Mock()
+        response.status_code = status_code
+        response.json.return_value = json_data or {}
+        response.raise_for_status = Mock()
+        if status_code >= 400:
+            response.raise_for_status.side_effect = requests.exceptions.HTTPError(response=response)
+        return response
+
+    @patch('repositories.services.requests.request')
+    def test_list_repositories_returns_data(self, mock_request):
+        """list_repositories returns the repository names from the catalog endpoint."""
+        mock_request.return_value = self._mock_response({'repositories': ['nginx', 'redis']})
+
+        repositories = self.service.list_repositories()
+
+        self.assertEqual(repositories, ['nginx', 'redis'])
+        mock_request.assert_called_once_with(
+            'GET', 'http://registry:5000/v2/_catalog', auth=('admin', 'secret'),
+        )
+
+    @patch('repositories.services.requests.request')
+    def test_list_tags_returns_tags(self, mock_request):
+        """list_tags returns the tags for a repository."""
+        mock_request.return_value = self._mock_response({'name': 'nginx', 'tags': ['latest', 'v1.0']})
+
+        tags = self.service.list_tags('nginx')
+
+        self.assertEqual(tags, ['latest', 'v1.0'])
+        mock_request.assert_called_once_with(
+            'GET', 'http://registry:5000/v2/nginx/tags/list', auth=('admin', 'secret'),
+        )
+
+    @patch('repositories.services.requests.request')
+    def test_list_tags_returns_empty_list_when_no_tags(self, mock_request):
+        """list_tags returns an empty list when the repository has no tags."""
+        mock_request.return_value = self._mock_response({'name': 'nginx', 'tags': None})
+
+        tags = self.service.list_tags('nginx')
+
+        self.assertEqual(tags, [])
+
+    @patch('repositories.services.requests.request')
+    def test_get_manifest_returns_manifest_data(self, mock_request):
+        """get_manifest returns the manifest JSON for a repository and tag."""
+        manifest = {'schemaVersion': 2, 'mediaType': 'application/vnd.docker.distribution.manifest.v2+json'}
+        mock_request.return_value = self._mock_response(manifest)
+
+        result = self.service.get_manifest('nginx', 'latest')
+
+        self.assertEqual(result, manifest)
+        mock_request.assert_called_once_with(
+            'GET',
+            'http://registry:5000/v2/nginx/manifests/latest',
+            auth=('admin', 'secret'),
+            headers={'Accept': 'application/vnd.docker.distribution.manifest.v2+json'},
+        )
+
+    @patch('repositories.services.requests.request')
+    def test_delete_manifest_returns_true_on_success(self, mock_request):
+        """delete_manifest returns True after a successful delete."""
+        mock_request.return_value = self._mock_response(status_code=202)
+
+        result = self.service.delete_manifest('nginx', 'sha256:' + 'a' * 64)
+
+        self.assertTrue(result)
+        mock_request.assert_called_once_with(
+            'DELETE',
+            'http://registry:5000/v2/nginx/manifests/sha256:' + 'a' * 64,
+            auth=('admin', 'secret'),
+            headers={'Accept': 'application/vnd.docker.distribution.manifest.v2+json'},
+        )
+
+    @patch('repositories.services.requests.request')
+    def test_list_repositories_raises_registry_error_when_unavailable(self, mock_request):
+        """A connection failure is wrapped in a RegistryError."""
+        mock_request.side_effect = requests.exceptions.ConnectionError('connection refused')
+
+        with self.assertRaises(RegistryError):
+            self.service.list_repositories()
+
+    @patch('repositories.services.requests.request')
+    def test_get_manifest_raises_registry_error_on_http_error(self, mock_request):
+        """An HTTP error response is wrapped in a RegistryError."""
+        mock_request.return_value = self._mock_response(status_code=404)
+
+        with self.assertRaises(RegistryError):
+            self.service.get_manifest('missing-repo', 'latest')
