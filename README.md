@@ -138,6 +138,18 @@ The command is safe to run more than once — if the `admin` user already exists
 
 `admin_password.txt` is git-ignored — never commit it.
 
+### Log Indexing (Analytics)
+
+Application logs are written as JSON to `app/logs/` (see `LOGGING` in `config/settings.py`). To make them searchable, index them into Elasticsearch:
+
+```bash
+python manage.py index_logs
+```
+
+This parses `app.log`, `access.log`, and `error.log`, and sends new entries to the `app-logs` Elasticsearch index (`ELASTICSEARCH_URL`, default `http://localhost:9200`). It tracks how far it read into each file (in `app/logs/.index_logs_position.json`), so running it again only picks up newly appended lines — safe to run repeatedly, e.g. on a schedule. Use `--full` to ignore the tracked position and re-index every log entry from the start of each file (this does not create duplicates, since each entry gets a deterministic id).
+
+Requires Elasticsearch to be reachable — either via `docker compose up -d elasticsearch`, or a local instance with `ELASTICSEARCH_URL` set accordingly.
+
 ### With Docker
 
 ```bash
