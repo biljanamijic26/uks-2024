@@ -199,3 +199,7 @@ docker-registry-platform/
 ```
 
 *This structure will grow as more features are implemented (Docker configs, NGINX, CI/CD workflows, docs, etc.).*
+
+## Documentation
+
+- [UML Class Diagram](docs/uml-class-diagram.png) — domain model showing `User`, `Repository`, and `Tag`, their fields/methods, and relationships. Source: [docs/uml-class-diagram.puml](docs/uml-class-diagram.puml) (SVG version also available: [docs/uml-class-diagram.svg](docs/uml-class-diagram.svg)).
