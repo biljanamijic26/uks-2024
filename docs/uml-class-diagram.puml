@@ -1,0 +1,87 @@
+@startuml uml-class-diagram
+title Docker Registry Platform - Domain Model
+
+skinparam classAttributeIconSize 0
+skinparam shadowing false
+skinparam class {
+  BackgroundColor White
+  BorderColor #444444
+  ArrowColor #444444
+}
+hide circle
+hide empty members
+
+' ---------------------------------------------------------------------------
+' Django's built-in abstract base class, shown for context only (not owned
+' by this codebase). accounts.User extends it directly.
+' ---------------------------------------------------------------------------
+class AbstractUser <<django.contrib.auth>> {
+  + username: str
+  + email: str
+  + password: str
+  + first_name: str
+  + last_name: str
+  + is_active: bool
+  + is_staff: bool
+  + is_superuser: bool
+  + date_joined: datetime
+}
+
+class User {
+  + role: str <<Role: super_admin | admin | user>>
+  + is_verified_publisher: bool
+  + is_sponsored_oss: bool
+  + must_change_password: bool
+  --
+  + __str__(): str
+  + is_admin: bool <<property>>
+  + is_super_admin: bool <<property>>
+}
+note right of User
+  role choices (Role.TextChoices):
+  SUPER_ADMIN, ADMIN, USER
+end note
+
+class Repository {
+  + owner: User
+  + name: str
+  + short_description: str
+  + visibility: str <<Visibility: public | private>>
+  + is_official: bool
+  + created_at: datetime
+  + updated_at: datetime
+  --
+  + __str__(): str
+  + full_name: str <<property>>
+}
+note right of Repository
+  unique_owner_repository_name:
+  unique (owner, name)
+end note
+
+class Tag {
+  + repository: Repository
+  + name: str
+  + digest: str
+  + size: int (bigint)
+  + created_at: datetime
+  --
+  + __str__(): str
+  + full_name: str <<property>>
+  + short_digest: str <<property>>
+  + size_display: str <<property>>
+}
+note right of Tag
+  unique_repository_tag_name:
+  unique (repository, name)
+end note
+
+AbstractUser <|-- User
+
+User "1" -- "0..*" Repository : owns >
+Repository "1" -- "0..*" Tag : has >
+
+note "Star model (bonus M:N User <-> Repository) is not\nyet implemented in the codebase and is therefore\nomitted from this diagram; add it here once introduced." as N1
+N1 .. Repository
+
+@enduml
