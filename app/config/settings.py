@@ -107,6 +107,10 @@ ELASTICSEARCH_URL = os.environ.get('ELASTICSEARCH_URL', 'http://localhost:9200')
 REGISTRY_URL = os.environ.get('REGISTRY_URL', 'http://localhost:5000')
 REGISTRY_USERNAME = os.environ.get('REGISTRY_USERNAME', 'admin')
 REGISTRY_PASSWORD = os.environ.get('REGISTRY_PASSWORD', 'Admin123')
+REGISTRY_AUTH_ISSUER = os.environ.get('REGISTRY_AUTH_ISSUER', 'uks-registry-auth')
+REGISTRY_AUTH_SERVICE = os.environ.get('REGISTRY_AUTH_SERVICE', 'uks-registry')
+REGISTRY_AUTH_KEY_PATH = os.environ.get('REGISTRY_AUTH_KEY_PATH', '/auth/registry-auth.key')
+REGISTRY_TOKEN_TTL = 300
 
 # Logging
 LOGS_DIR = BASE_DIR / 'logs'
