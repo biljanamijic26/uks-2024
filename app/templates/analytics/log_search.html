@@ -5,7 +5,36 @@
 {% block content %}
 <h1 class="h3 mb-4">Log Search</h1>
 
+<ul class="nav nav-tabs mb-4">
+    <li class="nav-item">
+        <a class="nav-link {% if mode == 'simple' %}active{% endif %}" href="?mode=simple">Simple</a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link {% if mode == 'advanced' %}active{% endif %}" href="?mode=advanced">Advanced</a>
+    </li>
+</ul>
+
+{% if mode == 'advanced' %}
+<form method="get" id="log-search-form" class="row g-2 mb-2">
+    <input type="hidden" name="mode" value="advanced">
+    <div class="col-md-10">
+        {{ form.advanced_q }}
+    </div>
+    <div class="col-md-2">
+        <button type="submit" class="btn btn-primary w-100">Search</button>
+    </div>
+</form>
+<p class="form-text mb-4">
+    Combine <code>AND</code>, <code>OR</code>, <code>NOT</code> and parentheses with <code>field:value</code>
+    terms (fields: level, logger, method, path, user, message). Example:
+    <code>(level:warning OR level:error) AND message:"error occurred"</code>
+</p>
+{% if query_error %}
+<div class="alert alert-danger">{{ query_error }}</div>
+{% endif %}
+{% else %}
 <form method="get" id="log-search-form" class="row g-2 mb-4">
+    <input type="hidden" name="mode" value="simple">
     <div class="col-md-4">
         {{ form.q }}
     </div>
@@ -24,6 +53,7 @@
         <button type="submit" class="btn btn-primary w-100">Search</button>
     </div>
 </form>
+{% endif %}
 
 {% if searched %}
     {% if results %}
@@ -78,6 +108,7 @@
 {% endblock %}
 
 {% block extra_js %}
+{% if mode == 'simple' %}
 <script>
     (function () {
         const form = document.getElementById('log-search-form');
@@ -103,4 +134,26 @@
         }
     })();
 </script>
+{% else %}
+<script>
+    (function () {
+        const form = document.getElementById('log-search-form');
+        const input = document.getElementById('id_advanced_q');
+        let wasEmpty = !input.value;
+
+        input.addEventListener('input', function () {
+            const isEmpty = !input.value.trim();
+            if (isEmpty && !wasEmpty) {
+                form.requestSubmit();
+            }
+            wasEmpty = isEmpty;
+        });
+
+        if (input.value) {
+            input.focus();
+            input.setSelectionRange(input.value.length, input.value.length);
+        }
+    })();
+</script>
+{% endif %}
 {% endblock %}

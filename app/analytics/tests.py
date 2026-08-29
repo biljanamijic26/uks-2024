@@ -263,3 +263,51 @@ class LogSearchViewTest(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'No log entries match your search.')
+
+
+@patch('analytics.views.Elasticsearch')
+class LogSearchAdvancedTabTest(TestCase):
+    """Test cases for the advanced (logical query) tab of the log search page."""
+
+    def setUp(self):
+        self.url = reverse('log_search')
+        self.admin = User.objects.create_user(username='siteadmin', password='AdminPass123!', role=User.Role.ADMIN)
+        self.client.login(username='siteadmin', password='AdminPass123!')
+
+    def test_valid_query_is_parsed_and_sent_to_elasticsearch(self, mock_es_cls):
+        mock_es_cls.return_value.search.return_value = {'hits': {'total': {'value': 0}, 'hits': []}}
+
+        self.client.get(self.url, {'mode': 'advanced', 'advanced_q': 'level:error AND user:marija'})
+
+        _, kwargs = mock_es_cls.return_value.search.call_args
+        self.assertEqual(kwargs['query'], {
+            'bool': {'must': [{'term': {'level': 'ERROR'}}, {'term': {'user': 'marija'}}]},
+        })
+
+    def test_empty_query_falls_back_to_match_all(self, mock_es_cls):
+        mock_es_cls.return_value.search.return_value = {'hits': {'total': {'value': 0}, 'hits': []}}
+
+        self.client.get(self.url, {'mode': 'advanced'})
+
+        _, kwargs = mock_es_cls.return_value.search.call_args
+        self.assertEqual(kwargs['query'], {'match_all': {}})
+
+    def test_invalid_query_shows_error_and_does_not_call_elasticsearch(self, mock_es_cls):
+        response = self.client.get(self.url, {'mode': 'advanced', 'advanced_q': '(level:error'})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Missing closing parenthesis.')
+        mock_es_cls.return_value.search.assert_not_called()
+
+    def test_valid_query_displays_results(self, mock_es_cls):
+        mock_es_cls.return_value.search.return_value = {
+            'hits': {
+                'total': {'value': 1},
+                'hits': [{'_source': {'timestamp': '2026-08-25 10:00:00,000', 'level': 'ERROR', 'message': 'boom'}}],
+            },
+        }
+
+        response = self.client.get(self.url, {'mode': 'advanced', 'advanced_q': 'level:error'})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'boom')
