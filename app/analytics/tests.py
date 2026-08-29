@@ -3,15 +3,21 @@ Tests for analytics app.
 """
 import json
 import tempfile
+from datetime import date
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 from django.conf import settings
+from django.contrib.auth import get_user_model
 from django.core.management import call_command
 from django.test import TestCase, override_settings
-from elasticsearch import Elasticsearch
+from django.urls import reverse
+from elasticsearch import Elasticsearch, NotFoundError
 
 from analytics.management.commands.index_logs import INDEX_NAME
+from analytics.services import build_log_search_query
+
+User = get_user_model()
 
 
 def _write_log(path, entries):
@@ -153,3 +159,107 @@ class IndexLogsIntegrationTest(TestCase):
         result = self.es.search(index=INDEX_NAME, query={'match': {'message': 'integration-test-marker'}})
 
         self.assertGreaterEqual(result['hits']['total']['value'], 1)
+
+
+class BuildLogSearchQueryTest(TestCase):
+    """Test cases for build_log_search_query."""
+
+    def _cleaned_data(self, **overrides):
+        data = {'q': '', 'level': '', 'date_after': None, 'date_before': None}
+        data.update(overrides)
+        return data
+
+    def test_matches_everything_when_no_filters_given(self):
+        query, _ = build_log_search_query(self._cleaned_data())
+        self.assertEqual(query['bool']['must'], [{'match_all': {}}])
+        self.assertEqual(query['bool']['filter'], [])
+
+    def test_text_query_uses_multi_match_on_message(self):
+        query, _ = build_log_search_query(self._cleaned_data(q='timeout'))
+        self.assertEqual(
+            query['bool']['must'],
+            [{'multi_match': {'query': 'timeout', 'fields': ['message'], 'type': 'bool_prefix'}}],
+        )
+
+    def test_level_becomes_a_term_filter(self):
+        query, _ = build_log_search_query(self._cleaned_data(level='ERROR'))
+        self.assertIn({'term': {'level': 'ERROR'}}, query['bool']['filter'])
+
+    def test_date_range_becomes_a_range_filter(self):
+        query, _ = build_log_search_query(self._cleaned_data(date_after=date(2026, 8, 1), date_before=date(2026, 8, 25)))
+        self.assertIn(
+            {'range': {'timestamp': {'gte': '2026-08-01', 'lte': '2026-08-25'}}},
+            query['bool']['filter'],
+        )
+
+    def test_sort_ranks_relevance_before_recency(self):
+        _, sort = build_log_search_query(self._cleaned_data())
+        self.assertEqual(sort, [{'_score': 'desc'}, {'timestamp': 'desc'}])
+
+
+@patch('analytics.views.Elasticsearch')
+class LogSearchViewTest(TestCase):
+    """Test cases for the admin log search page."""
+
+    def setUp(self):
+        self.url = reverse('log_search')
+        self.admin = User.objects.create_user(username='siteadmin', password='AdminPass123!', role=User.Role.ADMIN)
+        self.regular_user = User.objects.create_user(username='janedoe', password='RegularPass123!')
+
+    def test_anonymous_user_is_redirected_to_login(self, mock_es_cls):
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(response.url.startswith('/login/'))
+
+    def test_regular_user_is_forbidden(self, mock_es_cls):
+        self.client.login(username='janedoe', password='RegularPass123!')
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, 403)
+
+    def test_loading_the_page_shows_results_immediately(self, mock_es_cls):
+        mock_es_cls.return_value.search.return_value = {
+            'hits': {
+                'total': {'value': 1},
+                'hits': [{'_source': {'timestamp': '2026-08-25 10:00:00,000', 'level': 'INFO', 'message': 'hi'}}],
+            },
+        }
+        self.client.login(username='siteadmin', password='AdminPass123!')
+        response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, 200)
+        mock_es_cls.return_value.search.assert_called_once()
+        self.assertContains(response, 'hi')
+
+    def test_search_displays_results_from_elasticsearch(self, mock_es_cls):
+        mock_es_cls.return_value.search.return_value = {
+            'hits': {
+                'total': {'value': 1},
+                'hits': [
+                    {'_source': {'timestamp': '2026-08-25 10:00:00,000', 'level': 'ERROR', 'message': 'boom'}},
+                ],
+            },
+        }
+        self.client.login(username='siteadmin', password='AdminPass123!')
+        response = self.client.get(self.url, {'q': 'boom'})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'boom')
+        expected = {'timestamp': '2026-08-25 10:00:00,000', 'level': 'ERROR', 'message': 'boom'}
+        self.assertEqual(response.context['results'], [expected])
+        self.assertEqual(response.context['num_pages'], 1)
+
+    def test_search_shows_empty_state_when_no_hits(self, mock_es_cls):
+        mock_es_cls.return_value.search.return_value = {'hits': {'total': {'value': 0}, 'hits': []}}
+        self.client.login(username='siteadmin', password='AdminPass123!')
+        response = self.client.get(self.url, {'q': 'nomatch'})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'No log entries match your search.')
+
+    def test_search_shows_empty_state_when_index_does_not_exist_yet(self, mock_es_cls):
+        mock_es_cls.return_value.search.side_effect = NotFoundError.__new__(NotFoundError)
+        self.client.login(username='siteadmin', password='AdminPass123!')
+        response = self.client.get(self.url, {'q': 'anything'})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'No log entries match your search.')
