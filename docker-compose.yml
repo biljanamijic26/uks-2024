@@ -9,6 +9,7 @@ services:
     volumes:
       - static_volume:/app/staticfiles
       - logs_volume:/app/logs
+      - ./auth:/auth:ro
     depends_on:
       db:
         condition: service_healthy
@@ -58,22 +59,27 @@ services:
       - static_volume:/static:ro
     ports:
       - "80:80"
+      - "5000:80"
     depends_on:
       - web
+      - registry
     restart: unless-stopped
 
   registry:
     image: registry:2
     environment:
-      REGISTRY_AUTH: htpasswd
-      REGISTRY_AUTH_HTPASSWD_REALM: Registry Realm
-      REGISTRY_AUTH_HTPASSWD_PATH: /auth/htpasswd
+      REGISTRY_AUTH: token
+      REGISTRY_AUTH_TOKEN_REALM: http://localhost:5000/registry/token/
+      REGISTRY_AUTH_TOKEN_SERVICE: uks-registry
+      REGISTRY_AUTH_TOKEN_ISSUER: uks-registry-auth
+      REGISTRY_AUTH_TOKEN_ROOTCERTBUNDLE: /auth/registry-auth.crt
+      REGISTRY_HTTP_HOST: http://localhost:5000
       REGISTRY_STORAGE_DELETE_ENABLED: "true"
     volumes:
       - ./auth:/auth:ro
       - registry_data:/var/lib/registry
-    ports:
-      - "5000:5000"
+    expose:
+      - "5000"
     restart: unless-stopped
 
 volumes:
