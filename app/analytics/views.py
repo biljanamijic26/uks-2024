@@ -27,14 +27,15 @@ class LogSearchView(AdminRequiredMixin, TemplateView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        form = LogSearchForm(self.request.GET or None)
+        form = LogSearchForm(self.request.GET)
         context['form'] = form
 
-        if self.request.GET and form.is_valid():
+        if form.is_valid():
             context.update(self._search(form))
-            params = self.request.GET.copy()
-            params.pop('page', None)
-            context['query_string'] = params.urlencode()
+
+        params = self.request.GET.copy()
+        params.pop('page', None)
+        context['query_string'] = params.urlencode()
 
         return context
 

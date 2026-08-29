@@ -216,11 +216,19 @@ class LogSearchViewTest(TestCase):
         response = self.client.get(self.url)
         self.assertEqual(response.status_code, 403)
 
-    def test_admin_can_load_page_without_searching(self, mock_es_cls):
+    def test_loading_the_page_shows_results_immediately(self, mock_es_cls):
+        mock_es_cls.return_value.search.return_value = {
+            'hits': {
+                'total': {'value': 1},
+                'hits': [{'_source': {'timestamp': '2026-08-25 10:00:00,000', 'level': 'INFO', 'message': 'hi'}}],
+            },
+        }
         self.client.login(username='siteadmin', password='AdminPass123!')
         response = self.client.get(self.url)
+
         self.assertEqual(response.status_code, 200)
-        mock_es_cls.return_value.search.assert_not_called()
+        mock_es_cls.return_value.search.assert_called_once()
+        self.assertContains(response, 'hi')
 
     def test_search_displays_results_from_elasticsearch(self, mock_es_cls):
         mock_es_cls.return_value.search.return_value = {

@@ -150,6 +150,8 @@ This parses `app.log`, `access.log`, and `error.log`, and sends new entries to t
 
 Requires Elasticsearch to be reachable — either via `docker compose up -d elasticsearch`, or a local instance with `ELASTICSEARCH_URL` set accordingly.
 
+Once logs are indexed, admins can search them at `/admin-panel/analytics/` — by text, log level, and date range.
+
 ### With Docker
 
 ```bash
