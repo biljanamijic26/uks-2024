@@ -33,6 +33,8 @@ docker-compose.override.yml
 
 # Registry auth
 auth/htpasswd
+auth/registry-auth.key
+auth/registry-auth.crt
 
 # Personal local notes (not shared via git)
 docs/local/
