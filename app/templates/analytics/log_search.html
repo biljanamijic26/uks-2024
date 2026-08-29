@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+
+{% block title %}Log Search - Docker Registry Platform{% endblock %}
+
+{% block content %}
+<h1 class="h3 mb-4">Log Search</h1>
+
+<form method="get" id="log-search-form" class="row g-2 mb-4">
+    <div class="col-md-4">
+        {{ form.q }}
+    </div>
+    <div class="col-md-2">
+        {{ form.level }}
+    </div>
+    <div class="col-md-2">
+        <label for="{{ form.date_after.id_for_label }}" class="visually-hidden">Date after</label>
+        {{ form.date_after }}
+    </div>
+    <div class="col-md-2">
+        <label for="{{ form.date_before.id_for_label }}" class="visually-hidden">Date before</label>
+        {{ form.date_before }}
+    </div>
+    <div class="col-md-2">
+        <button type="submit" class="btn btn-primary w-100">Search</button>
+    </div>
+</form>
+
+{% if searched %}
+    {% if results %}
+    <div class="table-responsive">
+        <table class="table align-middle">
+            <thead>
+                <tr>
+                    <th>Timestamp</th>
+                    <th>Level</th>
+                    <th>Message</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for entry in results %}
+                <tr>
+                    <td>{{ entry.timestamp }}</td>
+                    <td>{{ entry.level }}</td>
+                    <td>{{ entry.message }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    {% if num_pages > 1 %}
+    <nav class="mt-4" aria-label="Log search results pages">
+        <ul class="pagination justify-content-center">
+            {% if has_previous %}
+            <li class="page-item">
+                <a class="page-link" href="?{{ query_string }}&page={{ page_number|add:'-1' }}">Previous</a>
+            </li>
+            {% endif %}
+            <li class="page-item disabled">
+                <span class="page-link">Page {{ page_number }} of {{ num_pages }}</span>
+            </li>
+            {% if has_next %}
+            <li class="page-item">
+                <a class="page-link" href="?{{ query_string }}&page={{ page_number|add:'1' }}">Next</a>
+            </li>
+            {% endif %}
+        </ul>
+    </nav>
+    {% endif %}
+
+    {% else %}
+    <div class="text-center py-5">
+        <i class="bi bi-journal-text display-4 text-muted"></i>
+        <p class="text-muted mt-3 mb-0">No log entries match your search.</p>
+    </div>
+    {% endif %}
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    (function () {
+        const form = document.getElementById('log-search-form');
+        const textInput = document.getElementById('id_q');
+        let debounceTimer;
+
+        textInput.addEventListener('input', function () {
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(function () {
+                form.requestSubmit();
+            }, 400);
+        });
+
+        ['id_level', 'id_date_after', 'id_date_before'].forEach(function (fieldId) {
+            document.getElementById(fieldId).addEventListener('change', function () {
+                form.requestSubmit();
+            });
+        });
+
+        if (textInput.value) {
+            textInput.focus();
+            textInput.setSelectionRange(textInput.value.length, textInput.value.length);
+        }
+    })();
+</script>
+{% endblock %}
