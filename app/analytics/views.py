@@ -8,7 +8,8 @@ from elasticsearch import Elasticsearch, NotFoundError
 
 from .forms import LogSearchForm
 from .management.commands.index_logs import INDEX_NAME
-from .services import build_log_search_query
+from .query_parser import QueryParseError, parse_logical_query
+from .services import RELEVANCE_SORT, build_log_search_query
 
 PAGE_SIZE = 20
 
@@ -29,9 +30,14 @@ class LogSearchView(AdminRequiredMixin, TemplateView):
         context = super().get_context_data(**kwargs)
         form = LogSearchForm(self.request.GET)
         context['form'] = form
+        mode = self.request.GET.get('mode')
+        context['mode'] = 'advanced' if mode == 'advanced' else 'simple'
 
         if form.is_valid():
-            context.update(self._search(form))
+            try:
+                context.update(self._search(form, context['mode']))
+            except QueryParseError as error:
+                context['query_error'] = str(error)
 
         params = self.request.GET.copy()
         params.pop('page', None)
@@ -39,8 +45,14 @@ class LogSearchView(AdminRequiredMixin, TemplateView):
 
         return context
 
-    def _search(self, form):
-        query, sort = build_log_search_query(form.cleaned_data)
+    def _search(self, form, mode):
+        if mode == 'advanced':
+            raw_query = form.cleaned_data.get('advanced_q', '').strip()
+            query = parse_logical_query(raw_query) if raw_query else {'match_all': {}}
+            sort = RELEVANCE_SORT
+        else:
+            query, sort = build_log_search_query(form.cleaned_data)
+
         page = self._page_number()
 
         es = Elasticsearch(settings.ELASTICSEARCH_URL)

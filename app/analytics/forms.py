@@ -20,6 +20,12 @@ class LogSearchForm(forms.Form):
     level = forms.ChoiceField(choices=LOG_LEVEL_CHOICES, required=False)
     date_after = forms.DateField(required=False, widget=forms.DateInput(attrs={'type': 'date'}))
     date_before = forms.DateField(required=False, widget=forms.DateInput(attrs={'type': 'date'}))
+    advanced_q = forms.CharField(
+        required=False, label='Advanced query',
+        widget=forms.TextInput(attrs={
+            'placeholder': '(level:warning OR level:error) AND message:"error occurred"',
+        }),
+    )
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

@@ -2,6 +2,8 @@
 Elasticsearch query building for the admin log search page.
 """
 
+RELEVANCE_SORT = [{'_score': 'desc'}, {'timestamp': 'desc'}]
+
 
 def build_log_search_query(cleaned_data):
     """Builds an Elasticsearch query DSL dict and sort clause from LogSearchForm.cleaned_data.
@@ -35,5 +37,4 @@ def build_log_search_query(cleaned_data):
         filters.append({'range': {'timestamp': date_range}})
 
     query = {'bool': {'must': must, 'filter': filters}}
-    sort = [{'_score': 'desc'}, {'timestamp': 'desc'}]
-    return query, sort
+    return query, RELEVANCE_SORT
