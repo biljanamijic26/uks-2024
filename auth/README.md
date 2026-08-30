@@ -44,3 +44,22 @@ localhost:5000`; private pulls require the owning user to log in. Admin users
 can push an image named after an existing official repository.
 
 The old `auth/htpasswd` file is no longer used and can be deleted locally.
+
+## Synchronizing tags with Django
+
+Synchronize every Django repository with the tags currently stored in
+Distribution:
+
+```bash
+python manage.py sync_tags
+```
+
+Synchronize only one repository by its full Registry name:
+
+```bash
+python manage.py sync_tags --repo marija/my-app
+python manage.py sync_tags --repo official-alpine
+```
+
+The command creates new `Tag` records, updates digest and compressed size
+metadata, and removes database tags that no longer exist in Distribution.
