@@ -1,0 +1,10 @@
+{# Reusable empty-state block. Params: icon (bootstrap-icons name, no "bi-" prefix), message, action_url, action_label, action_icon #}
+<div class="text-center py-5">
+    <i class="bi bi-{{ icon }} display-4 text-muted"></i>
+    <p class="text-muted mt-3 mb-0">{{ message }}</p>
+    {% if action_url %}
+    <a href="{{ action_url }}" class="btn btn-primary mt-3">
+        {% if action_icon %}<i class="bi bi-{{ action_icon }} me-1"></i>{% endif %}{{ action_label }}
+    </a>
+    {% endif %}
+</div>

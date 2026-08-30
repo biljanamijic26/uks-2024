@@ -33,12 +33,8 @@
                 <td>{{ target_user.email }}</td>
                 <td>{{ target_user.get_role_display }}</td>
                 <td>
-                    {% if target_user.is_verified_publisher %}
-                    <span class="badge text-bg-primary"><i class="bi bi-patch-check-fill"></i> Verified Publisher</span>
-                    {% endif %}
-                    {% if target_user.is_sponsored_oss %}
-                    <span class="badge text-bg-success"><i class="bi bi-heart-fill"></i> Sponsored OSS</span>
-                    {% endif %}
+                    {% include "components/_badge_verified.html" with badge_user=target_user %}
+                    {% include "components/_badge_sponsored.html" with badge_user=target_user %}
                     {% if not target_user.is_verified_publisher and not target_user.is_sponsored_oss %}
                     <span class="text-muted fst-italic">None</span>
                     {% endif %}
@@ -99,6 +95,7 @@
     {% endif %}
 </div>
 {% endif %}
+
 {% endblock %}
 
 {% block extra_js %}

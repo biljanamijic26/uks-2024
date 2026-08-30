@@ -47,7 +47,7 @@
 <div class="d-flex justify-content-between align-items-start mb-2">
     <h1 class="h3 fw-bold mb-0">{{ repository.full_name }}</h1>
     <div class="d-flex flex-column gap-1 align-items-end">
-        {% include "repositories/_official_badge.html" with repository=repository %}
+        {% include "components/_badge_official.html" with repository=repository %}
         {% if repository.visibility == "private" %}
         <span class="badge text-bg-secondary"><i class="bi bi-lock-fill"></i> Private</span>
         {% else %}
@@ -128,7 +128,7 @@
             <div class="col-auto d-flex align-items-center gap-2">
                 <label for="tag-sort" class="repo-sort-label mb-0 text-muted">Sort by</label>
                 <select id="tag-sort" name="sort" class="form-select" aria-label="Sort tags"
-                        onchange="this.form.submit()">
+                        onchange="this.form.requestSubmit()">
                     <option value="newest" {% if tag_sort == "newest" %}selected{% endif %}>
                         Newest</option>
                     <option value="oldest" {% if tag_sort == "oldest" %}selected{% endif %}>
@@ -194,9 +194,20 @@
             </table>
         </div>
         {% elif tag_query %}
-        <p class="text-muted mb-0">No tags match "{{ tag_query }}".</p>
+        <div class="text-center py-5">
+            <i class="bi bi-tags display-4 text-muted"></i>
+            <p class="text-muted mt-3 mb-0">No tags match "{{ tag_query }}".</p>
+        </div>
         {% else %}
-        <p class="text-muted mb-0">This repository doesn't have any tags yet.</p>
+        {% if user == repository.owner %}
+        {% url 'tag_create' owner=repository.owner.username name=repository.name as tag_create_url %}
+        {% include "components/_empty_state.html" with icon="tags" message="This repository doesn't have any tags yet." action_url=tag_create_url action_label="Create your first tag" action_icon="plus-lg" %}
+        {% else %}
+        <div class="text-center py-5">
+            <i class="bi bi-tags display-4 text-muted"></i>
+            <p class="text-muted mt-3 mb-0">This repository doesn't have any tags yet.</p>
+        </div>
+        {% endif %}
         {% endif %}
     </div>
 </div>
