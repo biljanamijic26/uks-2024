@@ -101,7 +101,7 @@ MESSAGE_TAGS = {
 
 # Authentication
 LOGIN_URL = '/login/'
-LOGIN_REDIRECT_URL = '/'
+LOGIN_REDIRECT_URL = 'explore'
 LOGOUT_REDIRECT_URL = '/login/'
 
 # Admin setup (setup_admin management command)
