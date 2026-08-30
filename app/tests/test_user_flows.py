@@ -31,7 +31,7 @@ class RegistrationLoginCreateRepositoryFlowTest(TransactionTestCase):
             'username': 'flowuser',
             'password': 'StrongPass123!',
         })
-        self.assertRedirects(login_response, '/')
+        self.assertRedirects(login_response, '/explore/')
         self.assertIn('_auth_user_id', self.client.session)
 
         create_response = self.client.post('/repositories/new/', {
@@ -176,10 +176,10 @@ class SuperAdminCreatesAdminFlowTest(TransactionTestCase):
             'password': 'ChosenPass123!',
         })
         self.assertEqual(login_response.status_code, 302)
-        self.assertEqual(login_response.url, '/')
+        self.assertEqual(login_response.url, '/explore/')
         self.assertIn('_auth_user_id', self.client.session)
 
-        home_response = self.client.get('/')
+        home_response = self.client.get('/explore/')
         self.assertRedirects(home_response, '/password-change/')
 
     def test_new_admin_can_manage_official_repositories_after_first_login(self):

@@ -39,12 +39,8 @@
                     <li class="list-group-item d-flex justify-content-between align-items-center px-0">
                         <span class="text-muted"><i class="bi bi-award me-2"></i>Badges</span>
                         <span>
-                            {% if user.is_verified_publisher %}
-                            <span class="badge text-bg-primary"><i class="bi bi-patch-check-fill"></i> Verified Publisher</span>
-                            {% endif %}
-                            {% if user.is_sponsored_oss %}
-                            <span class="badge text-bg-success"><i class="bi bi-heart-fill"></i> Sponsored OSS</span>
-                            {% endif %}
+                            {% include "components/_badge_verified.html" with badge_user=user %}
+                            {% include "components/_badge_sponsored.html" with badge_user=user %}
                             {% if not user.is_verified_publisher and not user.is_sponsored_oss %}
                             <span class="text-muted fst-italic">None</span>
                             {% endif %}

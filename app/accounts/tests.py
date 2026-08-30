@@ -171,11 +171,11 @@ class LoginLogoutTest(TestCase):
         self.user = User.objects.create_user(username="loginuser", password="pass12345")
 
     def test_valid_credentials_log_user_in(self):
-        """Logging in with correct credentials authenticates the user and redirects home."""
+        """Logging in with correct credentials authenticates the user and redirects to Explore."""
         response = self.client.post("/login/", {"username": "loginuser", "password": "pass12345"})
 
         self.assertEqual(response.status_code, 302)
-        self.assertEqual(response.url, "/")
+        self.assertEqual(response.url, "/explore/")
         self.assertIn("_auth_user_id", self.client.session)
 
     def test_invalid_credentials_show_error(self):

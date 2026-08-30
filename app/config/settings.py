@@ -5,6 +5,7 @@ Django settings for Docker Registry Platform.
 import os
 from pathlib import Path
 import dj_database_url
+from django.contrib.messages import constants as message_constants
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -93,9 +94,14 @@ STATIC_ROOT = BASE_DIR / 'staticfiles'
 # Default primary key
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
+# Bootstrap uses "alert-danger" for errors, not Django's default "error" tag
+MESSAGE_TAGS = {
+    message_constants.ERROR: 'danger',
+}
+
 # Authentication
 LOGIN_URL = '/login/'
-LOGIN_REDIRECT_URL = '/'
+LOGIN_REDIRECT_URL = 'explore'
 LOGOUT_REDIRECT_URL = '/login/'
 
 # Admin setup (setup_admin management command)
