@@ -34,8 +34,8 @@ An owner can push to their personal repository:
 
 ```bash
 docker login localhost:5000
-docker tag alpine localhost:5000/<username>/<repository>:latest
-docker push localhost:5000/<username>/<repository>:latest
+docker tag alpine localhost:5000/user/reponame:latest
+docker push localhost:5000/user/reponame:latest
 ```
 
 Log in as a different user and repeat the push to confirm it is rejected.
@@ -57,7 +57,7 @@ python manage.py sync_tags
 Synchronize only one repository by its full Registry name:
 
 ```bash
-python manage.py sync_tags --repo marija/my-app
+python manage.py sync_tags --repo user/reponame
 python manage.py sync_tags --repo official-alpine
 ```
 
