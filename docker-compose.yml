@@ -19,6 +19,27 @@ services:
         condition: service_started
     restart: unless-stopped
 
+  log-indexer:
+    build:
+      context: ./app
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:${POSTGRES_PORT}/${POSTGRES_DB}
+    volumes:
+      - logs_volume:/app/logs
+    command: >
+      sh -c "while true; do
+        python manage.py index_logs;
+        sleep 60;
+      done"
+    depends_on:
+      db:
+        condition: service_healthy
+      elasticsearch:
+        condition: service_started
+    restart: unless-stopped
+
   db:
     image: postgres:15-alpine
     environment:
