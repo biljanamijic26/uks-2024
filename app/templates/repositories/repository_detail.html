@@ -48,6 +48,8 @@
     <h1 class="h3 fw-bold mb-0">{{ repository.full_name }}</h1>
     <div class="d-flex flex-column gap-1 align-items-end">
         {% include "components/_badge_official.html" with repository=repository %}
+        {% include "components/_badge_verified.html" with badge_user=repository.owner %}
+        {% include "components/_badge_sponsored.html" with badge_user=repository.owner %}
         {% if repository.visibility == "private" %}
         <span class="badge text-bg-secondary"><i class="bi bi-lock-fill"></i> Private</span>
         {% else %}
